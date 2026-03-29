@@ -1,0 +1,1 @@
+mobile → send command → agent/server → commands.js → executor.js → OS
