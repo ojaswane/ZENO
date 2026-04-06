@@ -1,3 +1,6 @@
+//i Agents Animated Modal Screen
+// 1. Taking state = <iframe src='https://my.spline.design/untitled-d7FjJOgZDDZFyfrGxouNIIV4/' frameborder='0' width='100%' height='100%'></iframe>
+// 2. Listening state = 
 import { Link } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
