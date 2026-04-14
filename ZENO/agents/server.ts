@@ -24,5 +24,5 @@ io.on("connection", (socket : any) => {
 );
 
 server.listen(5000, () => {
-    console.log("🚀 ZENO server running on port 5000");
+    console.log(" ZENO server running on port 5000");
 });
