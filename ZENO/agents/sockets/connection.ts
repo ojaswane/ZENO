@@ -1,5 +1,14 @@
 // temp data base
 
+// This is how the Ai will send data:
+/* socket.emit("command", {
+  sessionId: "abc123",
+  data: {
+    action: "open_app",
+    app: "chrome",
+  },
+}); */
+
 interface Session {
     host: string,
     client: string | null,
@@ -21,6 +30,7 @@ module.exports = function (socket: any, io: any) {
 
         socket.join(sessionId);
 
+        // this will basically shown by qr
         socket.emit("session-created", sessionId);
     });
 
