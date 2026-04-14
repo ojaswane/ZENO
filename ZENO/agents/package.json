@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.88.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "qrcode": "^1.5.4",
