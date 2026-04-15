@@ -8,7 +8,7 @@ const commands: Record<string, string> = {
     spotify: "start https://open.spotify.com/"
 };
 
-function executecommand(data: any) {
+function executeCommand(data: any) {
     if (!data || !data.action) {
         console.log("Invalid command");
         return;
@@ -63,3 +63,5 @@ function searchWeb(query: string) {
     console.log("Opening browser with search query:", query);
     exec(`start ${url}`);
 }
+
+module.exports = executeCommand;
