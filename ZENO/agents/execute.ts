@@ -53,5 +53,13 @@ function openApp(appName: string) {
 }
 
 function searchWeb(query: string) {
+    if (!query) {
+        console.log("Unable to recognize search query");
+        return;
+    }
 
+    const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+
+    console.log("Opening browser with search query:", query);
+    exec(`start ${url}`);
 }
