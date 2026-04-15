@@ -33,7 +33,22 @@ function openApp(appName: string) {
         return
     }
 
-    let command = "";
+    let command = commands[appName.toLowerCase()];
+    if (!command) {
+        console.log("App not supported:", appName);
+        return;
+    }
+    exec(command, (error: any, stdout: any, stderr: any) => {
+        if (error) {
+            console.error(`Error executing command: ${error.message}`);
+            return;
+        }
+        if (stderr) {
+            console.error(`Error output: ${stderr}`);
+            return;
+        }
+        console.log(`Command output: ${stdout}`);
+    });
 
 }
 
