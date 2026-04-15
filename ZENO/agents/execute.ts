@@ -1,6 +1,13 @@
 // This is the main file which actually runs the commnd
 const { exec } = require("child_process");
 
+const commands: Record<string, string> = {
+    chrome: "start chrome",
+    arc: "start arc",
+    vscode: "code",
+    spotify: "start https://open.spotify.com/"
+};
+
 function executecommand(data: any) {
     if (!data || !data.action) {
         console.log("Invalid command");
@@ -20,16 +27,16 @@ function executecommand(data: any) {
     }
 }
 
-function openApp(appName : string) {
+function openApp(appName: string) {
     if (!appName) {
         console.log("Unable to recognize app name");
         return
     }
 
     let command = "";
-    
+
 }
 
-function searchWeb(query : string) {
+function searchWeb(query: string) {
 
 }
