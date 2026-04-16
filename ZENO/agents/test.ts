@@ -8,7 +8,7 @@ socket.on("connect", () => {
     socket.emit("create-session");
 
     socket.on("session-created", (sessionId: string) => {
-        console.log("📱 Session ID:", sessionId);
+        console.log("Session ID:", sessionId);
 
         // STEP 2: send command (simulate mobile)
         socket.emit("user-command", {
