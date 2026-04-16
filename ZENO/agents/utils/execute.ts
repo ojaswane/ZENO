@@ -64,4 +64,4 @@ function searchWeb(query: string) {
     exec(`start ${url}`);
 }
 
-module.exports = executeCommand;
+export default executeCommand;

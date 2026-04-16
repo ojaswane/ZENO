@@ -16,7 +16,7 @@ interface Session {
 
 const sessions: Record<string, Session> = {};
 const { GetAiRes } = require("../Ai/Generate_output");
-
+import executeCommand from "../utils/execute";
 module.exports = function (socket: any, io: any) {
     console.log(" Device connected:", socket.id);
 
@@ -59,7 +59,7 @@ module.exports = function (socket: any, io: any) {
     });
 
     // HANDLE USER COMMANNDS
-    socket.on("user-command ", async ({ sessionId, data }: { sessionId: string, data: any }) => {
+    socket.on("user-command", async ({ sessionId, data }: { sessionId: string, data: any }) => {
         const res = await GetAiRes(data);
 
         // parse the data
