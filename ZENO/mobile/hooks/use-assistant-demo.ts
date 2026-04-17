@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useConnection } from './use-connection';
+import { useVoiceCommand } from './use-voice-command';
 
-export type AssistantOrbState = 'idle' | 'thinking' | 'speaking';
+export type AssistantOrbState = 'idle' | 'listening' | 'thinking' | 'speaking';
 
 export type ChatMessage = {
   id: string;
@@ -17,6 +18,14 @@ function createId(prefix: string) {
 
 export function useAssistantDemo() {
   const { connected, lastEvent, sendCommand } = useConnection();
+  const {
+    isListening,
+    transcript,
+    speechError,
+    startListening,
+    stopListening,
+    clearTranscript,
+  } = useVoiceCommand();
   const [orbState, setOrbState] = useState<AssistantOrbState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -77,12 +86,39 @@ export function useAssistantDemo() {
   }, [lastEvent]);
 
   useEffect(() => {
+    if (isListening) {
+      setOrbState('listening');
+      return;
+    }
+
     if (!connected) {
       setOrbState('idle');
     }
-  }, [connected]);
+  }, [connected, isListening]);
+
+  useEffect(() => {
+    if (!speechError) return;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: createId('a'),
+        role: 'assistant',
+        text: speechError,
+        createdAt: Date.now(),
+      },
+    ]);
+  }, [speechError]);
+
+  useEffect(() => {
+    if (!isListening && transcript.trim()) {
+      send(transcript);
+      clearTranscript();
+    }
+  }, [clearTranscript, isListening, send, transcript]);
 
   const headerLabel = useMemo(() => {
+    if (orbState === 'listening') return 'Listening';
     if (orbState === 'thinking') return 'Processing';
     if (orbState === 'speaking') return 'Speaking';
     return 'Ready';
@@ -95,5 +131,9 @@ export function useAssistantDemo() {
     input,
     setInput,
     send,
+    isListening,
+    transcript,
+    startListening,
+    stopListening,
   };
 }

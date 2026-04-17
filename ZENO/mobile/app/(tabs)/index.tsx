@@ -36,7 +36,8 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
 export default function AssistantScreen() {
   const { connected, connecting, sessionId } = useConnection();
-  const { orbState, headerLabel, messages, input, setInput, send } = useAssistantDemo();
+  const { orbState, headerLabel, messages, input, setInput, send, isListening, transcript, startListening, stopListening } =
+    useAssistantDemo();
 
   const statusText = useMemo(() => {
     if (connecting) return 'Linking';
@@ -77,6 +78,15 @@ export default function AssistantScreen() {
           showsVerticalScrollIndicator={false}
         />
 
+        {isListening ? (
+          <View style={styles.voicePreviewWrap}>
+            <Text style={styles.voicePreviewLabel}>Listening</Text>
+            <Text style={styles.voicePreviewText}>
+              {transcript || 'Speak now...'}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.composerWrap}>
           <GlassSurface variant="card" style={styles.composer}>
             <TextInput
@@ -93,6 +103,23 @@ export default function AssistantScreen() {
                 setInput('');
               }}
             />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                if (!connected) return;
+                if (isListening) {
+                  stopListening();
+                  return;
+                }
+                startListening();
+              }}
+              style={({ pressed }) => [styles.voiceButton, pressed && { opacity: 0.9 }]}>
+              <GlassSurface
+                variant="button"
+                style={[styles.voiceButtonInner, isListening && styles.voiceButtonInnerActive]}>
+                <IconSymbol name="mic.fill" size={20} color="rgba(255,255,255,0.92)" />
+              </GlassSurface>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={() => {
@@ -209,11 +236,43 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 10,
   },
+  voicePreviewWrap: {
+    marginBottom: 12,
+    paddingHorizontal: 6,
+    gap: 4,
+  },
+  voicePreviewLabel: {
+    color: 'rgba(192,132,252,0.88)',
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  voicePreviewText: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
   input: {
     flex: 1,
     color: 'rgba(255,255,255,0.92)',
     fontSize: 15,
     paddingVertical: 10,
+  },
+  voiceButton: {
+    width: 46,
+    height: 46,
+  },
+  voiceButtonInner: {
+    width: 46,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59,130,246,0.14)',
+    borderColor: 'rgba(96,165,250,0.3)',
+  },
+  voiceButtonInnerActive: {
+    backgroundColor: 'rgba(239,68,68,0.18)',
+    borderColor: 'rgba(248,113,113,0.4)',
   },
   sendButton: {
     width: 46,

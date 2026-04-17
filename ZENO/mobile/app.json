@@ -28,6 +28,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow ZENO to use your microphone for voice commands.",
+          "speechRecognitionPermission": "Allow ZENO to recognize your speech on device."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
