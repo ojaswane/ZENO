@@ -1,3 +1,4 @@
+// This file is basically for the tabs to change the page
 import { Tabs } from 'expo-router';
 import React from 'react';
 
@@ -18,18 +19,19 @@ export default function TabLayout() {
           borderTopColor: 'rgba(255,255,255,0.10)',
         },
       }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Assistant',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="sparkles" color={color} />,
-        }}
-      />
+
       <Tabs.Screen
         name="explore"
         options={{
           title: 'Connect',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="qrcode.viewfinder" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Assistant',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="sparkles" color={color} />,
         }}
       />
     </Tabs>
