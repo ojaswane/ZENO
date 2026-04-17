@@ -15,8 +15,28 @@ interface Session {
 }
 
 const sessions: Record<string, Session> = {};
-const { GetAiRes } = require("../Ai/Generate_output");
+const GetAiRes = require("../Ai/Generate_output").default;
 import executeCommand from "../utils/execute";
+
+function parseAiResponse(response: string) {
+    const trimmed = response.trim();
+    const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+    const payload = jsonMatch ? jsonMatch[0] : trimmed;
+
+    try {
+        return { ok: true, data: JSON.parse(payload) };
+    } catch (error) {
+        return {
+            ok: false,
+            data: {
+                action: "assistant_message",
+                text: trimmed,
+            },
+            error,
+        };
+    }
+}
+
 module.exports = function (socket: any, io: any) {
     console.log(" Device connected:", socket.id);
 
@@ -60,14 +80,24 @@ module.exports = function (socket: any, io: any) {
 
     // HANDLE USER COMMANNDS
     socket.on("user-command", async ({ sessionId, data }: { sessionId: string, data: any }) => {
-        const res = await GetAiRes(data);
-
-        // parse the data
-        const parse = JSON.parse(res)
-
         const session = sessions[sessionId];
-        if (session) {
-            io.to(session.host).emit("execute-command", parse);
+        if (!session) {
+            socket.emit("error", "Session not found");
+            return;
+        }
+
+        try {
+            const res = await GetAiRes(data);
+            const parsed = parseAiResponse(res);
+
+            if (!parsed.ok) {
+                console.warn("AI response was not valid JSON:", res);
+            }
+
+            io.to(session.host).emit("execute-command", parsed.data);
+        } catch (error) {
+            console.error("Failed to process user command:", error);
+            socket.emit("error", "Failed to process command");
         }
     });
 

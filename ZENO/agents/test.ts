@@ -1,5 +1,5 @@
 const { io: socketClient } = require("socket.io-client");
-const socket = socketClient("http://localhost:5000"); // your port
+const socket = socketClient("http://localhost:4000");
 
 socket.on("connect", () => {
     console.log(" Connected:", socket.id);

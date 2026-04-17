@@ -22,6 +22,10 @@ function executeCommand(data: any) {
             searchWeb(data.query);
             break;
 
+        case "assistant_message":
+            console.log("Assistant:", data.text);
+            break;
+
         default:
             console.log("Unknown action:", data.action);
     }

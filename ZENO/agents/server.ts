@@ -2,9 +2,10 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
-require('dotenv').config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, ".env.local") });
 
-const { handleSocketConnection } = require("./sockets/connection");
+const handleSocketConnection = require("./sockets/connection");
 const app = express();
 app.use(cors());
 
@@ -25,5 +26,5 @@ io.on("connection", (socket : any) => {
 );
 
 server.listen(4000, () => {
-    console.log(" ZENO server running on port 5000");
+    console.log("ZENO server running on port 4000");
 });
