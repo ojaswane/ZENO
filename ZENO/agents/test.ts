@@ -1,8 +1,8 @@
 const { io: socketClient } = require("socket.io-client");
-const socket = io("http://localhost:5000"); // your port
+const socket = socketClient("http://localhost:5000"); // your port
 
 socket.on("connect", () => {
-    console.log("✅ Connected:", socket.id);
+    console.log(" Connected:", socket.id);
 
     // STEP 1: create session (simulate laptop)
     socket.emit("create-session");
@@ -20,5 +20,5 @@ socket.on("connect", () => {
 
 // listen for execution
 socket.on("execute-command", (data: any) => {
-    console.log("⚡ Command received:", data);
+    console.log("Command received:", data);
 });
