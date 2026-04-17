@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ExpoSpeechRecognitionModule,
+  isRecognitionAvailable,
+  supportsOnDeviceRecognition,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 
@@ -37,9 +39,19 @@ export function useVoiceCommand() {
 
   const startListening = useCallback(async () => {
     setSpeechError(null);
-    const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!isRecognitionAvailable()) {
+      setSpeechError('Speech recognition is not available on this device or build.');
+      return false;
+    }
+
+    if (!supportsOnDeviceRecognition()) {
+      setSpeechError('This device does not currently support on-device speech recognition.');
+      return false;
+    }
+
+    const permission = await ExpoSpeechRecognitionModule.requestMicrophonePermissionsAsync();
     if (!permission.granted) {
-      setSpeechError('Microphone and speech permissions are required for voice control.');
+      setSpeechError('Microphone permission is required for voice control.');
       return false;
     }
 
