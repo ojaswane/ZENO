@@ -26,6 +26,7 @@ export default function TabLayout() {
           title: 'Connect',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="qrcode.viewfinder" color={color} />,
         }}
+        
       />
       <Tabs.Screen
         name="index"
@@ -33,6 +34,7 @@ export default function TabLayout() {
           title: 'Assistant',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="sparkles" color={color} />,
         }}
+
       />
     </Tabs>
   );

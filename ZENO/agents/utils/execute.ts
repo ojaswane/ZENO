@@ -1,4 +1,3 @@
-// This is the main file which actually runs the commnd
 const { exec } = require("child_process");
 
 const commands: Record<string, string> = {
@@ -11,37 +10,38 @@ const commands: Record<string, string> = {
 function executeCommand(data: any) {
     if (!data || !data.action) {
         console.log("Invalid command");
-        return;
+        return { success: false, message: "Invalid command payload" };
     }
+
     switch (data.action) {
         case "open_app":
-            openApp(data.app_name);
-            break;
+            return openApp(data.app_name);
 
         case "search":
-            searchWeb(data.query);
-            break;
+            return searchWeb(data.query);
 
         case "assistant_message":
             console.log("Assistant:", data.text);
-            break;
+            return { success: true, message: data.text || "Assistant responded" };
 
         default:
             console.log("Unknown action:", data.action);
+            return { success: false, message: `Unknown action: ${data.action}` };
     }
 }
 
 function openApp(appName: string) {
     if (!appName) {
         console.log("Unable to recognize app name");
-        return
+        return { success: false, message: "Unable to recognize app name" };
     }
 
-    let command = commands[appName.toLowerCase()];
+    const command = commands[appName.toLowerCase()];
     if (!command) {
         console.log("App not supported:", appName);
-        return;
+        return { success: false, message: `App not supported: ${appName}` };
     }
+
     exec(command, (error: any, stdout: any, stderr: any) => {
         if (error) {
             console.error(`Error executing command: ${error.message}`);
@@ -54,18 +54,20 @@ function openApp(appName: string) {
         console.log(`Command output: ${stdout}`);
     });
 
+    return { success: true, message: `Opening ${appName}` };
 }
 
 function searchWeb(query: string) {
     if (!query) {
         console.log("Unable to recognize search query");
-        return;
+        return { success: false, message: "Unable to recognize search query" };
     }
 
     const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 
     console.log("Opening browser with search query:", query);
     exec(`start ${url}`);
+    return { success: true, message: `Searching for ${query}` };
 }
 
 export default executeCommand;

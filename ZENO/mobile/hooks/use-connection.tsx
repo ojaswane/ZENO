@@ -1,28 +1,162 @@
-import React, { PropsWithChildren, useCallback, useContext, useMemo, useState } from 'react';
+import React, { PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { io, type Socket } from 'socket.io-client';
+
+type ConnectionEvent =
+  | { id: string; type: 'session-created'; text: string }
+  | { id: string; type: 'assistant-response'; text: string; payload?: unknown }
+  | { id: string; type: 'command-result'; text: string; success: boolean; payload?: unknown }
+  | { id: string; type: 'error'; text: string };
 
 type ConnectionContextValue = {
   connected: boolean;
-  setConnected: (connected: boolean) => void;
+  connecting: boolean;
+  serverUrl: string;
+  sessionId: string | null;
+  lastError: string | null;
+  lastEvent: ConnectionEvent | null;
+  setServerUrl: (serverUrl: string) => void;
   connect: () => void;
   disconnect: () => void;
+  sendCommand: (text: string) => boolean;
 };
 
 const ConnectionContext = React.createContext<ConnectionContextValue | null>(null);
+const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_ZENO_SERVER_URL ?? 'http://localhost:4000';
+
+function createEventId(type: string) {
+  return `${type}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 
 export function ConnectionProvider({ children }: PropsWithChildren) {
   const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastEvent, setLastEvent] = useState<ConnectionEvent | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
-  const connect = useCallback(() => setConnected(true), []);
-  const disconnect = useCallback(() => setConnected(false), []);
+  const disconnect = useCallback(() => {
+    socketRef.current?.disconnect();
+    socketRef.current = null;
+    setConnected(false);
+    setConnecting(false);
+    setSessionId(null);
+  }, []);
+
+  const connect = useCallback(() => {
+    const trimmedUrl = serverUrl.trim();
+    if (!trimmedUrl) {
+      const text = 'Enter your PC server URL first.';
+      setLastError(text);
+      setLastEvent({ id: createEventId('error'), type: 'error', text });
+      return;
+    }
+
+    socketRef.current?.disconnect();
+    setConnecting(true);
+    setLastError(null);
+
+    const socket = io(trimmedUrl, {
+      transports: ['websocket'],
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      setConnected(true);
+      setConnecting(false);
+      setLastError(null);
+      socket.emit('create-session');
+    });
+
+    socket.on('session-created', (nextSessionId: string) => {
+      setSessionId(nextSessionId);
+      setLastEvent({
+        id: createEventId('session-created'),
+        type: 'session-created',
+        text: `Linked to your PC. Session ${nextSessionId.toUpperCase()} is ready.`,
+      });
+    });
+
+    socket.on('assistant-response', (payload: { text?: string; payload?: unknown }) => {
+      if (!payload?.text) return;
+
+      setLastEvent({
+        id: createEventId('assistant-response'),
+        type: 'assistant-response',
+        text: payload.text,
+        payload: payload.payload,
+      });
+    });
+
+    socket.on('command-result', (payload: { message?: string; success?: boolean; data?: unknown }) => {
+      setLastEvent({
+        id: createEventId('command-result'),
+        type: 'command-result',
+        text: payload?.message ?? 'Command finished.',
+        success: Boolean(payload?.success),
+        payload: payload?.data,
+      });
+    });
+
+    socket.on('error', (message: string) => {
+      const text = message || 'Something went wrong while talking to the backend.';
+      setLastError(text);
+      setLastEvent({ id: createEventId('error'), type: 'error', text });
+    });
+
+    socket.on('connect_error', (error: Error) => {
+      const text = error.message || 'Could not connect to the backend.';
+      setLastError(text);
+      setConnected(false);
+      setConnecting(false);
+      setLastEvent({ id: createEventId('error'), type: 'error', text });
+    });
+
+    socket.on('disconnect', () => {
+      setConnected(false);
+      setConnecting(false);
+    });
+  }, [serverUrl]);
+
+  const sendCommand = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || !socketRef.current || !sessionId) {
+        return false;
+      }
+
+      socketRef.current.emit('user-command', {
+        sessionId,
+        data: trimmed,
+      });
+
+      return true;
+    },
+    [sessionId]
+  );
+
+  useEffect(() => {
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, []);
 
   const value = useMemo(
     () => ({
       connected,
-      setConnected,
+      connecting,
+      serverUrl,
+      sessionId,
+      lastError,
+      lastEvent,
+      setServerUrl,
       connect,
       disconnect,
+      sendCommand,
     }),
-    [connected, connect, disconnect]
+    [connected, connecting, serverUrl, sessionId, lastError, lastEvent, connect, disconnect, sendCommand]
   );
 
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;
@@ -35,4 +169,3 @@ export function useConnection() {
   }
   return value;
 }
-

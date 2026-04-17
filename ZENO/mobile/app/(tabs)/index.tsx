@@ -1,4 +1,3 @@
-// This is the main screen
 import React, { useMemo } from 'react';
 import {
   FlatList,
@@ -36,13 +35,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 export default function AssistantScreen() {
-  const { connected } = useConnection();
+  const { connected, connecting, sessionId } = useConnection();
   const { orbState, headerLabel, messages, input, setInput, send } = useAssistantDemo();
 
   const statusText = useMemo(() => {
+    if (connecting) return 'Linking';
     if (!connected) return 'Offline';
+    if (!sessionId) return 'Preparing';
     return headerLabel;
-  }, [connected, headerLabel]);
+  }, [connected, connecting, headerLabel, sessionId]);
 
   return (
     <GradientBackdrop>
@@ -81,7 +82,7 @@ export default function AssistantScreen() {
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder="Type your message…"
+              placeholder="Type your command..."
               placeholderTextColor="rgba(255,255,255,0.45)"
               style={styles.input}
               editable={connected}

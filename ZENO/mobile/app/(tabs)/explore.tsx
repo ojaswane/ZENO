@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { GlassSurface } from '@/components/zeno_Style/glass-surface';
 import { GradientBackdrop } from '@/components/zeno_Style/gradient-backdrop';
@@ -10,18 +10,33 @@ import { useConnection } from '@/hooks/use-connection';
 
 export default function ConnectionScreen() {
   const router = useRouter();
-  const { connected, connect } = useConnection();
+  const { connected, connecting, connect, disconnect, serverUrl, setServerUrl, sessionId, lastError } =
+    useConnection();
 
   return (
     <GradientBackdrop>
       <View style={styles.container}>
         <View style={styles.top}>
           <Text style={styles.title}>Connect</Text>
-          <Text style={styles.subtitle}>Scan a QR code to link your ZENO system.</Text>
+          <Text style={styles.subtitle}>
+            Point the app at your PC backend, then create a live control session.
+          </Text>
         </View>
 
         <GlassSurface variant="card" style={styles.qrCard}>
-          <Text style={styles.cardLabel}>QR Code</Text>
+          <Text style={styles.cardLabel}>Server</Text>
+          <GlassSurface variant="card" style={styles.inputShell}>
+            <TextInput
+              value={serverUrl}
+              onChangeText={setServerUrl}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="http://192.168.0.10:4000"
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              style={styles.input}
+            />
+          </GlassSurface>
+
           <View style={styles.qrPlaceholder}>
             <Image
               source={require('@/assets/images/Ai_Agent.png')}
@@ -30,24 +45,37 @@ export default function ConnectionScreen() {
             />
             <View pointerEvents="none" style={styles.qrOverlay} />
           </View>
+
           <Text style={styles.cardHint}>
-            {connected ? 'Connected. Switch to Assistant to start.' : 'Tap the button below to simulate a scan.'}
+            {connected
+              ? `Linked. Session ${sessionId?.toUpperCase() ?? '----'} is ready for commands.`
+              : 'Use your PC local IP here, not localhost, when testing on a real phone.'}
           </Text>
+          {lastError ? <Text style={styles.errorText}>{lastError}</Text> : null}
         </GlassSurface>
 
         <View style={styles.bottom}>
           <Pressable
             accessibilityRole="button"
             onPress={() => {
+              if (connected) {
+                disconnect();
+                return;
+              }
+
               connect();
               router.replace('/');
             }}
             style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.98 }] }]}>
             <GlassSurface variant="button" style={styles.fabInner}>
-              <IconSymbol name="qrcode.viewfinder" size={22} color="rgba(255,255,255,0.92)" />
+              <IconSymbol
+                name={connected ? 'bolt.slash.fill' : 'qrcode.viewfinder'}
+                size={22}
+                color="rgba(255,255,255,0.92)"
+              />
             </GlassSurface>
           </Pressable>
-          <Text style={styles.bottomHint}>Connect</Text>
+          <Text style={styles.bottomHint}>{connected ? 'Disconnect' : connecting ? 'Linking' : 'Connect'}</Text>
         </View>
       </View>
     </GradientBackdrop>
@@ -87,6 +115,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
     textTransform: 'uppercase',
   },
+  inputShell: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  input: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    paddingVertical: 10,
+  },
   qrPlaceholder: {
     flex: 1,
     borderRadius: 18,
@@ -107,6 +146,11 @@ const styles = StyleSheet.create({
   },
   cardHint: {
     color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  errorText: {
+    color: '#FCA5A5',
     fontSize: 13,
     lineHeight: 18,
   },

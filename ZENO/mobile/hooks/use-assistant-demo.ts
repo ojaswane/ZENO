@@ -1,4 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { useConnection } from './use-connection';
 
 export type AssistantOrbState = 'idle' | 'thinking' | 'speaking';
 
@@ -14,53 +16,71 @@ function createId(prefix: string) {
 }
 
 export function useAssistantDemo() {
+  const { connected, lastEvent, sendCommand } = useConnection();
   const [orbState, setOrbState] = useState<AssistantOrbState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: createId('a'),
       role: 'assistant',
-      text: 'Connected. How can I help?',
+      text: 'Connect your phone to the ZENO server, then send a command.',
       createdAt: Date.now(),
     },
   ]);
   const [input, setInput] = useState('');
-  const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const send = useCallback((text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+  const send = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
 
-    if (pendingTimer.current) {
-      clearTimeout(pendingTimer.current);
-      pendingTimer.current = null;
-    }
-
-    const userMessage: ChatMessage = {
-      id: createId('u'),
-      role: 'user',
-      text: trimmed,
-      createdAt: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setOrbState('thinking');
-
-    pendingTimer.current = setTimeout(() => {
-      const assistantMessage: ChatMessage = {
-        id: createId('a'),
-        role: 'assistant',
-        text: `Acknowledged: “${trimmed}”. (Demo response)`,
+      const userMessage: ChatMessage = {
+        id: createId('u'),
+        role: 'user',
+        text: trimmed,
         createdAt: Date.now(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setOrbState('speaking');
 
-      pendingTimer.current = setTimeout(() => {
+      setMessages((prev) => [...prev, userMessage]);
+      setOrbState('thinking');
+
+      const sent = sendCommand(trimmed);
+      if (!sent) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: createId('a'),
+            role: 'assistant',
+            text: 'Connection is not ready yet. Link the app to your PC first.',
+            createdAt: Date.now(),
+          },
+        ]);
         setOrbState('idle');
-        pendingTimer.current = null;
-      }, 1600);
-    }, 950);
-  }, []);
+      }
+    },
+    [sendCommand]
+  );
+
+  useEffect(() => {
+    if (!lastEvent) return;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: lastEvent.id,
+        role: 'assistant',
+        text: lastEvent.text,
+        createdAt: Date.now(),
+      },
+    ]);
+
+    setOrbState(lastEvent.type === 'assistant-response' ? 'speaking' : 'idle');
+  }, [lastEvent]);
+
+  useEffect(() => {
+    if (!connected) {
+      setOrbState('idle');
+    }
+  }, [connected]);
 
   const headerLabel = useMemo(() => {
     if (orbState === 'thinking') return 'Processing';
@@ -77,4 +97,3 @@ export function useAssistantDemo() {
     send,
   };
 }
-

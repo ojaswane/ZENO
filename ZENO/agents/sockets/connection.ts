@@ -1,14 +1,3 @@
-// temp data base
-
-// This is how the Ai will send data:
-/* socket.emit("command", {
-  sessionId: "abc123",
-  data: {
-    action: "open_app",
-    app: "chrome",
-  },
-}); */
-
 interface Session {
     host: string,
     client: string | null,
@@ -37,10 +26,17 @@ function parseAiResponse(response: string) {
     }
 }
 
+function emitCommandResult(io: any, sessionId: string, result: { success: boolean, message: string }, data: any) {
+    io.to(sessionId).emit("command-result", {
+        success: result.success,
+        message: result.message,
+        data,
+    });
+}
+
 module.exports = function (socket: any, io: any) {
     console.log(" Device connected:", socket.id);
 
-    // CREATE SESSION (Laptop)
     socket.on("create-session", () => {
         const sessionId = Math.random().toString(36).substring(2, 8);
 
@@ -50,35 +46,38 @@ module.exports = function (socket: any, io: any) {
         };
 
         socket.join(sessionId);
-
-        // this will basically shown by qr
         socket.emit("session-created", sessionId);
     });
 
-    // JOIN SESSION (Mobile)
     socket.on("join-session", (sessionId: string) => {
         if (sessions[sessionId]) {
             sessions[sessionId].client = socket.id;
-
             socket.join(sessionId);
 
             io.to(sessionId).emit("session-joined", {
-                message: "Connected successfully ",
+                message: "Connected successfully",
             });
         } else {
             socket.emit("error", "Session not found");
         }
     });
 
-    // SEND COMMAND (Mobile → Laptop)
     socket.on("command", ({ sessionId, data }: { sessionId: string, data: any }) => {
         const session = sessions[sessionId];
-        if (session) {
-            io.to(session.host).emit("execute-command", data);
+        if (!session) {
+            socket.emit("error", "Session not found");
+            return;
         }
+
+        if (session.host === socket.id) {
+            const result = executeCommand(data);
+            emitCommandResult(io, sessionId, result, data);
+            return;
+        }
+
+        io.to(session.host).emit("execute-command", data);
     });
 
-    // HANDLE USER COMMANNDS
     socket.on("user-command", async ({ sessionId, data }: { sessionId: string, data: any }) => {
         const session = sessions[sessionId];
         if (!session) {
@@ -92,6 +91,19 @@ module.exports = function (socket: any, io: any) {
 
             if (!parsed.ok) {
                 console.warn("AI response was not valid JSON:", res);
+            }
+
+            io.to(sessionId).emit("assistant-response", {
+                text: parsed.data.action === "assistant_message"
+                    ? parsed.data.text
+                    : `Running ${parsed.data.action.replace(/_/g, " ")}.`,
+                payload: parsed.data,
+            });
+
+            if (session.host === socket.id) {
+                const result = executeCommand(parsed.data);
+                emitCommandResult(io, sessionId, result, parsed.data);
+                return;
             }
 
             io.to(session.host).emit("execute-command", parsed.data);
