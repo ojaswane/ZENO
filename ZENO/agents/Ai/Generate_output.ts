@@ -1,10 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
-
-const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY,
-});
-
-
 const SYSTEM_PROMPT = `
 You are ZENO, a smart AI assistant that can control a user's computer and connected devices.
 
@@ -106,23 +99,53 @@ GOAL:
 
 Act like a real AI assistant that can control the user's system seamlessly through voice and commands.
 `
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
 async function GetAiRes(userInput: string) {
-    const message = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-20240620",
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: [
-            {
-                role: "user",
-                content: userInput,
+    if (!GEMINI_API_KEY) {
+        throw new Error("Missing GEMINI_API_KEY or GOOGLE_API_KEY in environment");
+    }
+
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
             },
-        ],
-    });
+            body: JSON.stringify({
+                systemInstruction: {
+                    parts: [{ text: SYSTEM_PROMPT }],
+                },
+                contents: [
+                    {
+                        role: "user",
+                        parts: [{ text: userInput }],
+                    },
+                ],
+                generationConfig: {
+                    temperature: 0.2,
+                    maxOutputTokens: 1024,
+                },
+            }),
+        }
+    );
 
-    const content = message.content[0];
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini API error ${response.status}: ${errorText}`);
+    }
 
-    if (content.type === "text") {
-        return content.text;
+    const result = await response.json();
+    const text = result?.candidates?.[0]?.content?.parts
+        ?.map((part: { text?: string }) => part.text ?? "")
+        .join("")
+        .trim();
+
+    if (text) {
+        return text;
     }
 
     return "";
