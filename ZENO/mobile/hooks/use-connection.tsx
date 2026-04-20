@@ -1,4 +1,5 @@
 import React, { PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { io, type Socket } from 'socket.io-client';
 
 type ConnectionEvent =
@@ -58,7 +59,8 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
     setLastError(null);
 
     const socket = io(trimmedUrl, {
-      transports: ['websocket'],
+      timeout: 8000,
+      reconnectionAttempts: 2,
     });
 
     socketRef.current = socket;
@@ -107,7 +109,13 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
     });
 
     socket.on('connect_error', (error: Error) => {
-      const text = error.message || 'Could not connect to the backend.';
+      const isLocalhostOnDevice =
+        Platform.OS !== 'web' &&
+        /(localhost|127\.0\.0\.1)/i.test(trimmedUrl);
+
+      const text = isLocalhostOnDevice
+        ? 'Could not connect. On a real phone, use your PC local IP like http://192.168.x.x:4000 instead of localhost.'
+        : error.message || 'Could not connect to the backend.';
       setLastError(text);
       setConnected(false);
       setConnecting(false);
