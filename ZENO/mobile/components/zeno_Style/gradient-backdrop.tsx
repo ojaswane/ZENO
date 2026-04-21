@@ -15,7 +15,7 @@ export function GradientBackdrop({ children }: PropsWithChildren) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#050215',
+    backgroundColor: '#fff',
   },
   content: {
     flex: 1,

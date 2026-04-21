@@ -210,6 +210,7 @@ const styles = StyleSheet.create({
   messagesContent: {
     paddingBottom: 12,
     gap: 10,
+    borderBlockColor:"#000"
   },
   messageRow: {
     width: '100%',
@@ -270,6 +271,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.92)',
     fontSize: 15,
     paddingVertical: 10,
+    borderColor:"#000"
   },
   voiceButton: {
     width: 46,

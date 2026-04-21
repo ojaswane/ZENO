@@ -20,8 +20,8 @@ export function GlassSurface({ variant = 'card', style, children, ...rest }: Gla
 const styles = StyleSheet.create({
   base: {
     backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0 , 0,5)',
+    borderWidth: 2,
     overflow: 'hidden',
     ...(Platform.select({
       ios: {
