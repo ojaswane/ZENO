@@ -12,13 +12,14 @@ import {
 
 import { GlassSurface } from '@/components/zeno_Style/glass-surface';
 import { GradientBackdrop } from '@/components/zeno_Style/gradient-backdrop';
-import { SplineOrb } from '@/components/zeno_Style/spline-orb';
+// import { SplineOrb } from '@/components/zeno_Style/spline-orb';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { ChatMessage } from '@/hooks/use-assistant-demo';
 import { useAssistantDemo } from '@/hooks/use-assistant-demo';
 import { useConnection } from '@/hooks/use-connection';
 import { Image } from 'expo-image';
 
+// import {} from '../assets/gifs/speaking.gif'
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user';
@@ -48,14 +49,13 @@ export default function AssistantScreen() {
   const getGifs = () => {
     switch (orbState) {
       case 'speaking':
-        return require('@/assets/speaking.gif');
+        return require('../assets/gifs/speaking.gif');
       case 'thinking':
-        return require('@/assets/thinking.gif');
+        return require('../assets/gifs/thinking.gif');
       default:
-        return require('@/assets/thinking.png');
+        return require('../assets/gifs/thinking.gif');
     }
   };
-
   return (
     <GradientBackdrop>
       <KeyboardAvoidingView
