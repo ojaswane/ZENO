@@ -17,9 +17,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { ChatMessage } from '@/hooks/use-assistant-demo';
 import { useAssistantDemo } from '@/hooks/use-assistant-demo';
 import { useConnection } from '@/hooks/use-connection';
+import { Image } from 'expo-image';
 
-const ORB_THINKING_URL = 'https://my.spline.design/untitled-d7FjJOgZDDZFyfrGxouNIIV4/';
-const ORB_SPEAKING_URL = 'https://my.spline.design/untitled-d7FjJOgZDDZFyfrGxouNIIV4/';
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user';
@@ -46,6 +45,17 @@ export default function AssistantScreen() {
     return headerLabel;
   }, [connected, connecting, headerLabel, sessionId]);
 
+  const getGifs = () => {
+    switch (orbState) {
+      case 'speaking':
+        return require('@/assets/speaking.gif');
+      case 'thinking':
+        return require('@/assets/thinking.gif');
+      default:
+        return require('@/assets/thinking.png');
+    }
+  };
+
   return (
     <GradientBackdrop>
       <KeyboardAvoidingView
@@ -60,11 +70,10 @@ export default function AssistantScreen() {
         </View>
 
         <View style={styles.orbWrap}>
-          <SplineOrb
-            state={connected ? orbState : 'idle'}
-            thinkingUrl={ORB_THINKING_URL}
-            speakingUrl={ORB_SPEAKING_URL}
-            size={270}
+          <Image
+            source={getGifs()}
+            style={styles.orb}
+            resizeMode="contain"
           />
         </View>
 
@@ -144,6 +153,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 18,
     paddingHorizontal: 18,
+  },
+  orb: {
+    width: 180,
+    height: 180,
   },
   header: {
     flexDirection: 'row',
