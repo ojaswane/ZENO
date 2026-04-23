@@ -31,7 +31,7 @@ export default function ConnectionScreen() {
               onChangeText={setServerUrl}
               autoCapitalize="none"
               autoCorrect={false}
-              placeholder="http://192.168.0.10:4000"
+              placeholder="http://192.168.105.96:4000"
               placeholderTextColor="rgba(255,255,255,0.35)"
               style={styles.input}
             />
