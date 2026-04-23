@@ -21,7 +21,7 @@ socket.on("create-session", async () => {
 
     const qrData = JSON.stringify({
         sessionId,
-        serverUrl: "http://192.168.X.X:4000" // replace with your IP
+        serverUrl: "http://192.168.105.96:4000" // replace with your IP
     });
 
     const qrCode = await QRCode.toDataURL(qrData);
