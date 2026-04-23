@@ -7,6 +7,8 @@ import { GlassSurface } from '@/components/zeno_Style/glass-surface';
 import { GradientBackdrop } from '@/components/zeno_Style/gradient-backdrop';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useConnection } from '@/hooks/use-connection';
+import { CameraView } from 'expo-camera';
+import ScannerScreen from '@/utils/camera'
 
 export default function ConnectionScreen() {
   const router = useRouter();
@@ -38,11 +40,7 @@ export default function ConnectionScreen() {
           </GlassSurface>
 
           <View style={styles.qrPlaceholder}>
-            <Image
-              source={require('@/assets/images/Ai_Agent.png')}
-              style={styles.qrImage}
-              contentFit="cover"
-            />
+            <ScannerScreen />
             <View pointerEvents="none" style={styles.qrOverlay} />
           </View>
 
