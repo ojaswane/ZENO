@@ -2,6 +2,17 @@ import React, { PropsWithChildren, useCallback, useContext, useEffect, useMemo, 
 import { Platform } from 'react-native';
 import { io, type Socket } from 'socket.io-client';
 
+type ServerErrorPayload = string | { message?: unknown; code?: unknown } | null | undefined;
+
+function toErrorText(payload: ServerErrorPayload): string {
+  if (typeof payload === 'string') return payload;
+  if (payload && typeof payload === 'object') {
+    const maybeMessage = (payload as { message?: unknown }).message;
+    if (typeof maybeMessage === 'string' && maybeMessage.trim()) return maybeMessage;
+  }
+  return 'Something went wrong while talking to the backend.';
+}
+
 type ConnectionEvent =
   | { id: string; type: 'session-created'; text: string }
   | { id: string; type: 'assistant-response'; text: string; payload?: unknown }
@@ -24,7 +35,7 @@ type ConnectionContextValue = {
 };
 
 const ConnectionContext = React.createContext<ConnectionContextValue | null>(null);
-const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_ZENO_SERVER_URL ?? 'http://localhost:4000';
+const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_ZENO_SERVER_URL ?? 'http://localhost:4001';
 
 function createEventId(type: string) {
   return `${type}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -109,8 +120,8 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       });
     });
 
-    socket.on('error', (message: string) => {
-      const text = message || 'Something went wrong while talking to the backend.';
+    socket.on('error', (message: ServerErrorPayload) => {
+      const text = toErrorText(message);
       setLastError(text);
       setLastEvent({ id: createEventId('error'), type: 'error', text });
     });
@@ -194,8 +205,8 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       });
     });
 
-    socket.on('error', (message: string) => {
-      const text = message || 'Something went wrong.';
+    socket.on('error', (message: ServerErrorPayload) => {
+      const text = toErrorText(message);
       setLastError(text);
       setLastEvent({ id: createEventId('error'), type: 'error', text });
     });
