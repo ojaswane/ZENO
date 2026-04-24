@@ -15,8 +15,10 @@ type ConnectionContextValue = {
   sessionId: string | null;
   lastError: string | null;
   lastEvent: ConnectionEvent | null;
+  qrCode: string | null;
   setServerUrl: (serverUrl: string) => void;
   connect: () => void;
+  joinSession: (sessionId: string, serverUrl?: string) => void;
   disconnect: () => void;
   sendCommand: (text: string) => boolean;
 };
@@ -33,6 +35,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
   const [connecting, setConnecting] = useState(false);
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastEvent, setLastEvent] = useState<ConnectionEvent | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -43,6 +46,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
     setConnected(false);
     setConnecting(false);
     setSessionId(null);
+    setQrCode(null);
   }, []);
 
   const connect = useCallback(() => {
@@ -72,8 +76,9 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       socket.emit('create-session');
     });
 
-    socket.on('session-created', (nextSessionId: string) => {
+    socket.on('session-created', ({ sessionId: nextSessionId, qrCode: nextQrCode }: { sessionId: string; qrCode: string }) => {
       setSessionId(nextSessionId);
+      setQrCode(nextQrCode);
       setLastEvent({
         id: createEventId('session-created'),
         type: 'session-created',
@@ -128,22 +133,73 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
     });
   }, [serverUrl]);
 
-  const sendCommand = useCallback(
-    (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || !socketRef.current || !sessionId) {
-        return false;
-      }
+  const joinSession = useCallback((targetSessionId: string, targetServerUrl?: string) => {
+    const urlToUse = (targetServerUrl || serverUrl).trim();
+    if (!urlToUse) {
+      const text = 'Enter your PC server URL first.';
+      setLastError(text);
+      setLastEvent({ id: createEventId('error'), type: 'error', text });
+      return;
+    }
 
-      socketRef.current.emit('user-command', {
-        sessionId,
-        data: trimmed,
+    socketRef.current?.disconnect();
+    setConnecting(true);
+    setLastError(null);
+
+    const socket = io(urlToUse, {
+      timeout: 8000,
+      reconnectionAttempts: 2,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      setConnected(true);
+      setConnecting(false);
+      setLastError(null);
+      socket.emit('join-session', targetSessionId);
+    });
+
+    socket.on('session-joined', () => {
+      setSessionId(targetSessionId);
+      setLastEvent({
+        id: createEventId('session-joined'),
+        type: 'session-created',
+        text: `Joined session ${targetSessionId.toUpperCase()}.`,
       });
+    });
 
-      return true;
-    },
-    [sessionId]
-  );
+    socket.on('error', (message: string) => {
+      const text = message || 'Something went wrong.';
+      setLastError(text);
+      setLastEvent({ id: createEventId('error'), type: 'error', text });
+    });
+
+    socket.on('connect_error', (error: Error) => {
+      setLastError(error.message || 'Could not connect.');
+      setConnected(false);
+      setConnecting(false);
+    });
+
+    socket.on('disconnect', () => {
+      setConnected(false);
+      setConnecting(false);
+    });
+  }, [serverUrl]);
+
+  const sendCommand = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || !socketRef.current || !sessionId) {
+      return false;
+    }
+
+    socketRef.current.emit('user-command', {
+      sessionId,
+      data: trimmed,
+    });
+
+    return true;
+  }, [sessionId]);
 
   useEffect(() => {
     return () => {
@@ -159,12 +215,14 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       sessionId,
       lastError,
       lastEvent,
+      qrCode,
       setServerUrl,
       connect,
+      joinSession,
       disconnect,
       sendCommand,
     }),
-    [connected, connecting, serverUrl, sessionId, lastError, lastEvent, connect, disconnect, sendCommand]
+    [connected, connecting, serverUrl, sessionId, lastError, lastEvent, qrCode, connect, joinSession, disconnect, sendCommand]
   );
 
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;

@@ -7,8 +7,9 @@ socket.on("connect", () => {
     // STEP 1: create session (simulate laptop)
     socket.emit("create-session");
 
-    socket.on("session-created", (sessionId: string) => {
+    socket.on("session-created", ({ sessionId, qrCode }: { sessionId: string, qrCode: string }) => {
         console.log("Session ID:", sessionId);
+        console.log("QR Code generated (base64 length):", qrCode ? qrCode.length : 0);
 
         // STEP 2: send command (simulate mobile)
         socket.emit("user-command", {

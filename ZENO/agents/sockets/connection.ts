@@ -1,11 +1,22 @@
+const QRCode = require("qrcode");
+
 interface Session {
     host: string,
     client: string | null,
 }
 
-const sessions: Record<string, Session> = {};
+let sessions: Record<string, Session> = {};
 const GetAiRes = require("../Ai/Generate_output").default;
 import executeCommand from "../utils/execute";
+
+// Allow server to inject shared sessions
+export function initSessions(s: Record<string, Session>) {
+    sessions = s;
+}
+
+function getLocalIP(): string {
+    return process.env.SERVER_URL || "http://192.168.105.96:4000";
+}
 
 function parseAiResponse(response: string) {
     const trimmed = response.trim();
@@ -37,7 +48,7 @@ function emitCommandResult(io: any, sessionId: string, result: { success: boolea
 module.exports = function (socket: any, io: any) {
     console.log(" Device connected:", socket.id);
 
-    socket.on("create-session", () => {
+    socket.on("create-session", async () => {
         const sessionId = Math.random().toString(36).substring(2, 8);
 
         sessions[sessionId] = {
@@ -46,7 +57,18 @@ module.exports = function (socket: any, io: any) {
         };
 
         socket.join(sessionId);
-        socket.emit("session-created", sessionId);
+
+        const qrData = JSON.stringify({
+            sessionId,
+            serverUrl: getLocalIP(),
+        });
+
+        const qrCode = await QRCode.toDataURL(qrData);
+
+        socket.emit("session-created", {
+            sessionId,
+            qrCode,
+        });
     });
 
     socket.on("join-session", (sessionId: string) => {

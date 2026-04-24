@@ -1,27 +1,94 @@
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRouter, usePathname } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { GlassSurface } from '@/components/zeno_Style/glass-surface';
 import { GradientBackdrop } from '@/components/zeno_Style/gradient-backdrop';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useConnection } from '@/hooks/use-connection';
-import { CameraView } from 'expo-camera';
-import ScannerScreen from '@/utils/camera'
+import { CameraView, useCameraPermissions } from 'expo-camera';
+
+function ScannerView({ onScanned }: { onScanned: (data: { sessionId: string; serverUrl: string }) => void }) {
+  const [permission, requestPermission] = useCameraPermissions();
+  const scanned = useRef(false);
+
+  if (!permission) {
+    return <View style={styles.scannerPlaceholder}><Text style={styles.scannerText}>Loading...</Text></View>;
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.scannerPlaceholder}>
+        <Text style={styles.scannerText}>Camera permission needed</Text>
+        <Pressable onPress={requestPermission} style={styles.permissionButton}>
+          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const handleScan = ({ data }: any) => {
+    if (scanned.current) return;
+    scanned.current = true;
+
+    try {
+      const parsed = JSON.parse(data);
+      onScanned(parsed);
+    } catch (e) {
+      console.error("Invalid QR data:", e);
+      scanned.current = false;
+    }
+  };
+
+  return (
+    <CameraView
+      style={{ flex: 1 }}
+      facing="back"
+      onBarcodeScanned={handleScan}
+      barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+    />
+  );
+}
 
 export default function ConnectionScreen() {
   const router = useRouter();
-  const { connected, connecting, connect, disconnect, serverUrl, setServerUrl, sessionId, lastError } =
+  const pathname = usePathname();
+  const { connected, connecting, joinSession, disconnect, serverUrl, setServerUrl, sessionId, lastError } =
     useConnection();
+  const [showScanner, setShowScanner] = useState(false);
+
+  // Navigate to AI chat when connected
+  useEffect(() => {
+    if (connected && pathname.includes('explore')) {
+      router.replace('/(tabs)/index' as any);
+    }
+  }, [connected, pathname, router]);
+
+  const handleConnect = () => {
+    if (connected) {
+      disconnect();
+      setShowScanner(false);
+      return;
+    }
+    // Just turn on the scanner - connection happens after QR scan
+    setShowScanner(true);
+  };
+
+  const handleQRScanned = ({ sessionId, serverUrl }: { sessionId: string; serverUrl: string }) => {
+    setServerUrl(serverUrl);
+    setShowScanner(false);
+    joinSession(sessionId, serverUrl);
+  };
 
   return (
     <GradientBackdrop>
       <View style={styles.container}>
         <View style={styles.top}>
-          <Text style={styles.title}>Connect</Text>
+          <Text style={styles.title}>{connected ? 'Connected' : 'Connect'}</Text>
           <Text style={styles.subtitle}>
-            Point the app at your PC backend, then create a live control session.
+            {connected
+              ? `Session ${sessionId?.toUpperCase() ?? '----'} active`
+              : 'Tap the button to scan QR code from your PC'}
           </Text>
         </View>
 
@@ -40,14 +107,27 @@ export default function ConnectionScreen() {
           </GlassSurface>
 
           <View style={styles.qrPlaceholder}>
-            <ScannerScreen />
+            {showScanner ? (
+              <ScannerView onScanned={handleQRScanned} />
+            ) : (
+              <View style={styles.scannerPlaceholder}>
+                {connecting ? (
+                  <ActivityIndicator size="large" color="rgba(192,132,252,0.8)" />
+                ) : (
+                  <IconSymbol name="qrcode.viewfinder" size={48} color="rgba(255,255,255,0.35)" />
+                )}
+                <Text style={styles.scannerHint}>
+                  {connected ? 'Connected!' : 'Tap button below to scan'}
+                </Text>
+              </View>
+            )}
             <View pointerEvents="none" style={styles.qrOverlay} />
           </View>
 
           <Text style={styles.cardHint}>
             {connected
-              ? `Linked. Session ${sessionId?.toUpperCase() ?? '----'} is ready for commands.`
-              : 'Use your PC local IP here, not localhost, when testing on a real phone.'}
+              ? 'Redirecting to ZENO assistant...'
+              : 'Make sure your PC backend is running'}
           </Text>
           {lastError ? <Text style={styles.errorText}>{lastError}</Text> : null}
         </GlassSurface>
@@ -55,15 +135,7 @@ export default function ConnectionScreen() {
         <View style={styles.bottom}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => {
-              if (connected) {
-                disconnect();
-                return;
-              }
-
-              connect();
-              router.replace('/');
-            }}
+            onPress={handleConnect}
             style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.98 }] }]}>
             <GlassSurface variant="button" style={styles.fabInner}>
               <IconSymbol
@@ -73,7 +145,9 @@ export default function ConnectionScreen() {
               />
             </GlassSurface>
           </Pressable>
-          <Text style={styles.bottomHint}>{connected ? 'Disconnect' : connecting ? 'Linking' : 'Connect'}</Text>
+          <Text style={styles.bottomHint}>
+            {connected ? 'Disconnect' : connecting ? 'Cancel' : 'Scan QR'}
+          </Text>
         </View>
       </View>
     </GradientBackdrop>
@@ -131,6 +205,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.14)',
     backgroundColor: 'rgba(0,0,0,0.22)',
+  },
+  scannerPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  scannerText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+  },
+  scannerHint: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 13,
+    marginTop: 8,
+  },
+  permissionButton: {
+    backgroundColor: 'rgba(124,58,237,0.3)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  permissionButtonText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    fontWeight: '600',
   },
   qrImage: {
     width: '100%',
