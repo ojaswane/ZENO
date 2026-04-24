@@ -73,7 +73,7 @@ export default function AssistantScreen() {
           <Image
             source={getGifs()}
             style={styles.orb}
-            resizeMode="contain"
+            contentFit="contain"
           />
         </View>
 
@@ -228,17 +228,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   bubbleUser: {
-    backgroundColor: 'rgba(124,58,237,0.16)',
-    borderColor: 'rgba(192,132,252,0.28)',
+    backgroundColor: 'rgba(124,58,237,0.28)',
+    borderColor: 'rgba(192,132,252,0.40)',
   },
   bubbleAssistant: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(0,0,0,0.34)',
+    borderColor: 'rgba(255,255,255,0.16)',
   },
   bubbleText: {
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.96)',
     fontSize: 15,
     lineHeight: 20,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   composerWrap: {
     paddingBottom: 14,
@@ -249,6 +252,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 10,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   voicePreviewWrap: {
     marginBottom: 12,
@@ -268,7 +273,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: 'rgba(255,255,255,0.92)',
+    color: 'rgba(255,255,255,0.96)',
     fontSize: 15,
     paddingVertical: 10,
     borderColor:"#000"
