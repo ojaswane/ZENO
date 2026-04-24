@@ -21,9 +21,23 @@ Return this shape exactly:
   }
 }
 
+Tone:
+- Always address the user as "sir" in the "speech" (and in "assistant_message.text" when used).
+
 Rules:
 - Only use "open_app" for apps in: chrome, vscode, spotify
-- If unsupported or unclear, use "assistant_message" with a helpful response
+- Prefer "search_web" for anything that needs fresh info or browsing, like:
+  - playing a song or video ("play all the love from bully") -> search_web with a YouTube-focused query
+  - stocks/crypto/market today -> search_web
+  - weather today -> search_web (include location if user provided; otherwise ask)
+  - current affairs / news -> search_web
+- If the user asks a question that can be answered by searching, DO NOT say "I can't" — just search_web.
+- If the request is unclear (e.g. weather but no city), use "assistant_message" to ask one short clarifying question.
+
+Action schemas:
+- open_app: { "type":"open_app", "app_name":"chrome"|"vscode"|"spotify" }
+- search_web: { "type":"search_web", "query": string }
+- assistant_message: { "type":"assistant_message", "text": string }
 `.trim();
 
 function extractJson(text: string): unknown {
@@ -147,7 +161,15 @@ export async function generateCommandFromText(
     };
   }
 
-  const raw = await callGemini({ apiKey: env.geminiApiKey, model: env.geminiModel }, trimmed);
-  const parsed = extractJson(raw);
-  return toSafeCommand(parsed);
+  try {
+    const raw = await callGemini({ apiKey: env.geminiApiKey, model: env.geminiModel }, trimmed);
+    const parsed = extractJson(raw);
+    return toSafeCommand(parsed);
+  } catch {
+    // Safe fallback: search for the original text.
+    return {
+      speech: "Searching that for you, sir.",
+      action: { type: "search_web", query: trimmed },
+    };
+  }
 }

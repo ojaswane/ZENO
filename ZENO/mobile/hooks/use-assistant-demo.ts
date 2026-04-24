@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as Speech from 'expo-speech';
 
 import { useConnection } from './use-connection';
 import { useVoiceCommand } from './use-voice-command';
@@ -17,7 +18,7 @@ function createId(prefix: string) {
 }
 
 export function useAssistantDemo() {
-  const { connected, lastEvent, sendCommand } = useConnection();
+  const { connected, sessionId, lastEvent, sendCommand } = useConnection();
   const {
     isListening,
     transcript,
@@ -27,6 +28,7 @@ export function useAssistantDemo() {
     clearTranscript,
   } = useVoiceCommand();
   const [orbState, setOrbState] = useState<AssistantOrbState>('idle');
+  const greetedSessionRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: createId('a'),
@@ -36,6 +38,19 @@ export function useAssistantDemo() {
     },
   ]);
   const [input, setInput] = useState('');
+
+  const speak = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    Speech.stop();
+    Speech.speak(trimmed, {
+      rate: 0.95,
+      pitch: 1.0,
+      onDone: () => setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev)),
+      onStopped: () => setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev)),
+      onError: () => setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev)),
+    });
+  }, []);
 
   const send = useCallback(
     (text: string) => {
@@ -82,11 +97,17 @@ export function useAssistantDemo() {
       },
     ]);
 
-    setOrbState(lastEvent.type === 'assistant-response' ? 'speaking' : 'idle');
-  }, [lastEvent]);
+    if (lastEvent.type === 'assistant-response') {
+      setOrbState('speaking');
+      speak(lastEvent.text);
+    } else {
+      setOrbState('idle');
+    }
+  }, [lastEvent, speak]);
 
   useEffect(() => {
     if (isListening) {
+      Speech.stop();
       setOrbState('listening');
       return;
     }
@@ -109,6 +130,22 @@ export function useAssistantDemo() {
       },
     ]);
   }, [speechError]);
+
+  useEffect(() => {
+    if (!connected || !sessionId) return;
+    if (greetedSessionRef.current === sessionId) return;
+
+    greetedSessionRef.current = sessionId;
+    const greeting = 'Hello sir, want me to open your favorite song?';
+
+    setMessages((prev) => [
+      ...prev,
+      { id: createId('a'), role: 'assistant', text: greeting, createdAt: Date.now() },
+    ]);
+
+    setOrbState('speaking');
+    speak(greeting);
+  }, [connected, sessionId, speak]);
 
   useEffect(() => {
     if (!isListening && transcript.trim()) {
