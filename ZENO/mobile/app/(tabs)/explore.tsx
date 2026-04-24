@@ -60,7 +60,7 @@ export default function ConnectionScreen() {
   // Navigate to AI chat once the session is actually joined.
   useEffect(() => {
     if (connected && sessionId && pathname.includes('explore')) {
-      router.replace('/(tabs)/index' as any);
+      router.replace('/');
     }
   }, [connected, pathname, router, sessionId]);
 
