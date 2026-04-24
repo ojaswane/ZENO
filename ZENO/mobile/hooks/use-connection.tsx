@@ -76,24 +76,26 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       socket.emit('create-session');
     });
 
-    socket.on('session-created', ({ sessionId: nextSessionId, qrCode: nextQrCode }: { sessionId: string; qrCode: string }) => {
-      setSessionId(nextSessionId);
-      setQrCode(nextQrCode);
+    socket.on('session-created', (payload: { sessionId: string; qrCodeDataUrl?: string; qrCode?: string }) => {
+      setSessionId(payload.sessionId);
+      setQrCode(payload.qrCodeDataUrl ?? payload.qrCode ?? null);
       setLastEvent({
         id: createEventId('session-created'),
         type: 'session-created',
-        text: `Linked to your PC. Session ${nextSessionId.toUpperCase()} is ready.`,
+        text: `Linked to your PC. Session ${payload.sessionId.toUpperCase()} is ready.`,
       });
     });
 
-    socket.on('assistant-response', (payload: { text?: string; payload?: unknown }) => {
-      if (!payload?.text) return;
+    socket.on('assistant-response', (payload: { text?: string; payload?: unknown; command?: { speech?: string; action?: unknown } }) => {
+      const text = payload?.text ?? payload?.command?.speech;
+      const nextPayload = payload?.payload ?? payload?.command?.action;
+      if (!text) return;
 
       setLastEvent({
         id: createEventId('assistant-response'),
         type: 'assistant-response',
-        text: payload.text,
-        payload: payload.payload,
+        text,
+        payload: nextPayload,
       });
     });
 
@@ -160,12 +162,35 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       socket.emit('join-session', targetSessionId);
     });
 
-    socket.on('session-joined', () => {
-      setSessionId(targetSessionId);
+    socket.on('session-joined', (payload?: { sessionId?: string }) => {
+      setSessionId(payload?.sessionId ?? targetSessionId);
       setLastEvent({
         id: createEventId('session-joined'),
         type: 'session-created',
         text: `Joined session ${targetSessionId.toUpperCase()}.`,
+      });
+    });
+
+    socket.on('assistant-response', (payload: { text?: string; payload?: unknown; command?: { speech?: string; action?: unknown } }) => {
+      const text = payload?.text ?? payload?.command?.speech;
+      const nextPayload = payload?.payload ?? payload?.command?.action;
+      if (!text) return;
+
+      setLastEvent({
+        id: createEventId('assistant-response'),
+        type: 'assistant-response',
+        text,
+        payload: nextPayload,
+      });
+    });
+
+    socket.on('command-result', (payload: { message?: string; success?: boolean; data?: unknown }) => {
+      setLastEvent({
+        id: createEventId('command-result'),
+        type: 'command-result',
+        text: payload?.message ?? 'Command finished.',
+        success: Boolean(payload?.success),
+        payload: payload?.data,
       });
     });
 
@@ -195,7 +220,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
 
     socketRef.current.emit('user-command', {
       sessionId,
-      data: trimmed,
+      text: trimmed,
     });
 
     return true;

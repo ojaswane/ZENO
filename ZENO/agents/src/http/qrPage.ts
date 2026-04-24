@@ -80,7 +80,7 @@ export function renderQrPage(): string {
           Scan this QR from your phone. Make sure your phone is on the same Wi‑Fi/LAN as this laptop.
         </div>
 
-        <div class="row">
+      <div class="row">
           <span class="pill">Session: <code id="sessionId">—</code></span>
           <span class="pill">Server URL: <code id="serverUrl">—</code></span>
         </div>
@@ -130,7 +130,9 @@ export function renderQrPage(): string {
       });
 
       socket.on('session-joined', (payload) => {
-        if (payload.role === 'client') setStatus('Mobile connected!', 'ok');
+        if (payload.role === 'client') {
+          setStatus('Mobile connected!', 'ok');
+        }
       });
 
       socket.on('error', (e) => {
@@ -152,8 +154,8 @@ export function renderQrPage(): string {
           setStatus('Failed to copy. Clipboard blocked by browser.', 'err');
         }
       });
+
     </script>
   </body>
 </html>`;
 }
-

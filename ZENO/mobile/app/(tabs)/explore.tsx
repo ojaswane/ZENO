@@ -57,12 +57,12 @@ export default function ConnectionScreen() {
     useConnection();
   const [showScanner, setShowScanner] = useState(false);
 
-  // Navigate to AI chat when connected
+  // Navigate to AI chat once the session is actually joined.
   useEffect(() => {
-    if (connected && pathname.includes('explore')) {
+    if (connected && sessionId && pathname.includes('explore')) {
       router.replace('/(tabs)/index' as any);
     }
-  }, [connected, pathname, router]);
+  }, [connected, pathname, router, sessionId]);
 
   const handleConnect = () => {
     if (connected) {
