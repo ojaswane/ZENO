@@ -65,7 +65,8 @@ function toSafeCommand(obj: unknown): AiCommand {
 
   if (type === "open_app") {
     const appName = (action as { app_name?: unknown }).app_name;
-    if (typeof appName !== "string" || !isAllowedApp(appName.toLowerCase())) {
+    const appLower = typeof appName === "string" ? appName.toLowerCase() : "";
+    if (!appLower || !isAllowedApp(appLower)) {
       return {
         speech: "That app isn't allowed.",
         action: {
@@ -74,7 +75,7 @@ function toSafeCommand(obj: unknown): AiCommand {
         },
       };
     }
-    return { speech, action: { type: "open_app", app_name: appName.toLowerCase() } };
+    return { speech, action: { type: "open_app", app_name: appLower } };
   }
 
   if (type === "search_web") {
@@ -150,4 +151,3 @@ export async function generateCommandFromText(
   const parsed = extractJson(raw);
   return toSafeCommand(parsed);
 }
-
