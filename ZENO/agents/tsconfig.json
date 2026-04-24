@@ -14,5 +14,8 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "types": ["node"]
+  },
+  "ts-node": {
+    "files": true
   }
 }
