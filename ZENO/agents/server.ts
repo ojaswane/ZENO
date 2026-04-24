@@ -42,6 +42,7 @@ app.get("/qr", async (req: any, res: any) => {
     try {
         const { sessionId, qrCode } = createSessionWithQR();
 
+        console.log(`Created session ${sessionId} with QR code`);
         res.send(`
 <!DOCTYPE html>
 <html>
