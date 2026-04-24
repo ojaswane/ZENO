@@ -4,7 +4,8 @@ import dotenv from "dotenv";
 export type Env = {
   port: number;
   serverUrlOverride: string | undefined;
-  anthropicApiKey: string | undefined;
+  geminiApiKey: string | undefined;
+  geminiModel: string;
 };
 
 export function loadEnv(): Env {
@@ -17,10 +18,9 @@ export function loadEnv(): Env {
   }
 
   const serverUrlOverride = process.env.SERVER_URL?.trim() || undefined;
-  const anthropicApiKey =
-    process.env.ANTHROPIC_API_KEY?.trim() ||
-    process.env.CLAUDE_API_KEY?.trim() ||
-    undefined;
+  const geminiApiKey =
+    process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim() || undefined;
+  const geminiModel = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 
-  return { port, serverUrlOverride, anthropicApiKey };
+  return { port, serverUrlOverride, geminiApiKey, geminiModel };
 }

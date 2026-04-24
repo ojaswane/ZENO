@@ -16,6 +16,8 @@ import { renderQrPage } from "./http/qrPage";
 export type StartOptions = {
   port: number;
   serverUrlOverride: string | undefined;
+  geminiApiKey: string | undefined;
+  geminiModel: string;
 };
 
 export function startServer(options: StartOptions): http.Server {
@@ -50,6 +52,8 @@ export function startServer(options: StartOptions): http.Server {
       sessions,
       port: options.port,
       serverUrlOverride: options.serverUrlOverride,
+      geminiApiKey: options.geminiApiKey,
+      geminiModel: options.geminiModel,
     });
   });
 

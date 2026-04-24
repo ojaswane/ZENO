@@ -9,7 +9,7 @@ import type {
 import type { SessionStore } from "../sessions/store";
 import { generateQrDataUrl } from "../qr/qr";
 import { getLocalIpv4 } from "../net/localIp";
-import { generateCommandFromText } from "../ai/claude";
+import { generateCommandFromText } from "../ai/gemini";
 import { executeAction } from "../executor/executor";
 
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -21,6 +21,8 @@ export type SocketHandlersDeps = {
   sessions: SessionStore;
   port: number;
   serverUrlOverride: string | undefined;
+  geminiApiKey: string | undefined;
+  geminiModel: string;
 };
 
 function emitError(socket: TypedSocket, error: ServerError): void {
@@ -34,7 +36,7 @@ function computeServerUrl(port: number, override?: string): string {
 }
 
 export function registerSocketHandlers(deps: SocketHandlersDeps): void {
-  const { io, socket, sessions, port, serverUrlOverride } = deps;
+  const { io, socket, sessions, port, serverUrlOverride, geminiApiKey, geminiModel } = deps;
 
   socket.on("create-session", async () => {
     try {
@@ -79,7 +81,7 @@ export function registerSocketHandlers(deps: SocketHandlersDeps): void {
     sessions.touch(sessionId);
 
     try {
-      const command = await generateCommandFromText(text);
+      const command = await generateCommandFromText(text, { geminiApiKey, geminiModel });
       io.to(sessionId).emit("assistant-response", { sessionId, command });
 
       io.to(sessionId).emit("execute-command", { sessionId, action: command.action });
