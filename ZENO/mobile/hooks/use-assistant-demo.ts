@@ -3,6 +3,7 @@ import * as Speech from 'expo-speech';
 
 import { useConnection } from './use-connection';
 import { useVoiceCommand } from './use-voice-command';
+import { playMp3Base64 } from '@/utils/tts-audio';
 
 export type AssistantOrbState = 'idle' | 'listening' | 'thinking' | 'speaking';
 
@@ -18,7 +19,7 @@ function createId(prefix: string) {
 }
 
 export function useAssistantDemo() {
-  const { connected, sessionId, lastEvent, sendCommand } = useConnection();
+  const { connected, lastAssistantAudio, lastEvent, sendCommand } = useConnection();
   const {
     isListening,
     transcript,
@@ -28,7 +29,9 @@ export function useAssistantDemo() {
     clearTranscript,
   } = useVoiceCommand();
   const [orbState, setOrbState] = useState<AssistantOrbState>('idle');
-  const greetedSessionRef = useRef<string | null>(null);
+  const pendingUtteranceIdRef = useRef<string | null>(null);
+  const pendingTextRef = useRef<string>('');
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: createId('a'),
@@ -39,7 +42,7 @@ export function useAssistantDemo() {
   ]);
   const [input, setInput] = useState('');
 
-  const speak = useCallback((text: string) => {
+  const speakLocal = useCallback((text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
     Speech.stop();
@@ -99,11 +102,22 @@ export function useAssistantDemo() {
 
     if (lastEvent.type === 'assistant-response') {
       setOrbState('speaking');
-      speak(lastEvent.text);
+
+      // Prefer ElevenLabs audio if it arrives (same utteranceId); fall back to local TTS after a short delay.
+      pendingUtteranceIdRef.current = lastEvent.utteranceId ?? null;
+      pendingTextRef.current = lastEvent.text;
+
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = setTimeout(() => {
+        // Only speak if we still haven't received audio for this utterance.
+        if (pendingUtteranceIdRef.current === (lastEvent.utteranceId ?? null)) {
+          speakLocal(lastEvent.text);
+        }
+      }, 900);
     } else {
       setOrbState('idle');
     }
-  }, [lastEvent, speak]);
+  }, [lastEvent, speakLocal]);
 
   useEffect(() => {
     if (isListening) {
@@ -132,20 +146,22 @@ export function useAssistantDemo() {
   }, [speechError]);
 
   useEffect(() => {
-    if (!connected || !sessionId) return;
-    if (greetedSessionRef.current === sessionId) return;
+    if (!lastAssistantAudio?.utteranceId || !lastAssistantAudio?.audioBase64) return;
+    const pendingId = pendingUtteranceIdRef.current;
+    if (!pendingId || lastAssistantAudio.utteranceId !== pendingId) return;
 
-    greetedSessionRef.current = sessionId;
-    const greeting = 'Hello sir, want me to open your favorite song?';
-
-    setMessages((prev) => [
-      ...prev,
-      { id: createId('a'), role: 'assistant', text: greeting, createdAt: Date.now() },
-    ]);
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    fallbackTimerRef.current = null;
 
     setOrbState('speaking');
-    speak(greeting);
-  }, [connected, sessionId, speak]);
+    void playMp3Base64(lastAssistantAudio.audioBase64, {
+      onDone: () => setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev)),
+    }).then((r) => {
+      if (!r.ok) {
+        speakLocal(pendingTextRef.current);
+      }
+    });
+  }, [connected, lastAssistantAudio, speakLocal]);
 
   useEffect(() => {
     if (!isListening && transcript.trim()) {

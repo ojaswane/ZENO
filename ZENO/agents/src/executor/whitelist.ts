@@ -15,6 +15,7 @@ export function appToExecSpec(app: AllowedApp): ExecSpec {
       if (app === "chrome") return windowsStart(["chrome"]);
       if (app === "vscode") return { file: "cmd.exe", args: ["/c", "code"] };
       if (app === "spotify") return windowsStart(["https://open.spotify.com/"]);
+      if (app === "youtube") return windowsStart(["https://www.youtube.com/"]);
       const _never: never = app;
       return _never;
     }
@@ -22,6 +23,7 @@ export function appToExecSpec(app: AllowedApp): ExecSpec {
       if (app === "chrome") return { file: "open", args: ["-a", "Google Chrome"] };
       if (app === "vscode") return { file: "open", args: ["-a", "Visual Studio Code"] };
       if (app === "spotify") return { file: "open", args: ["-a", "Spotify"] };
+      if (app === "youtube") return { file: "open", args: ["-a", "YouTube"] };
       const _never: never = app;
       return _never;
     }
@@ -29,6 +31,7 @@ export function appToExecSpec(app: AllowedApp): ExecSpec {
       if (app === "chrome") return { file: "xdg-open", args: ["https://www.google.com/chrome/"] };
       if (app === "vscode") return { file: "xdg-open", args: ["vscode://"] };
       if (app === "spotify") return { file: "xdg-open", args: ["https://open.spotify.com/"] };
+      if (app === "youtube") return { file: "xdg-open", args: ["https://www.youtube.com/"] };
       const _never: never = app;
       return _never;
     }
