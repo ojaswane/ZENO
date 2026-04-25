@@ -18,6 +18,10 @@ export type StartOptions = {
   serverUrlOverride: string | undefined;
   geminiApiKey: string | undefined;
   geminiModel: string;
+  elevenLabsApiKey: string | undefined;
+  elevenLabsVoiceId: string | undefined;
+  elevenLabsVoiceName: string;
+  elevenLabsModelId: string;
 };
 
 export function startServer(options: StartOptions): http.Server {
@@ -54,6 +58,10 @@ export function startServer(options: StartOptions): http.Server {
       serverUrlOverride: options.serverUrlOverride,
       geminiApiKey: options.geminiApiKey,
       geminiModel: options.geminiModel,
+      elevenLabsApiKey: options.elevenLabsApiKey,
+      elevenLabsVoiceId: options.elevenLabsVoiceId,
+      elevenLabsVoiceName: options.elevenLabsVoiceName,
+      elevenLabsModelId: options.elevenLabsModelId,
     });
   });
 

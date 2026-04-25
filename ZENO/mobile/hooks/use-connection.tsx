@@ -15,7 +15,7 @@ function toErrorText(payload: ServerErrorPayload): string {
 
 type ConnectionEvent =
   | { id: string; type: 'session-created'; text: string }
-  | { id: string; type: 'assistant-response'; text: string; payload?: unknown }
+  | { id: string; type: 'assistant-response'; text: string; payload?: unknown; utteranceId?: string }
   | { id: string; type: 'command-result'; text: string; success: boolean; payload?: unknown }
   | { id: string; type: 'error'; text: string };
 
@@ -26,6 +26,7 @@ type ConnectionContextValue = {
   sessionId: string | null;
   lastError: string | null;
   lastEvent: ConnectionEvent | null;
+  lastAssistantAudio: { utteranceId: string; mime: string; audioBase64: string } | null;
   qrCode: string | null;
   setServerUrl: (serverUrl: string) => void;
   connect: () => void;
@@ -49,6 +50,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastEvent, setLastEvent] = useState<ConnectionEvent | null>(null);
+  const [lastAssistantAudio, setLastAssistantAudio] = useState<ConnectionContextValue['lastAssistantAudio']>(null);
   const socketRef = useRef<Socket | null>(null);
 
   const disconnect = useCallback(() => {
@@ -58,6 +60,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
     setConnecting(false);
     setSessionId(null);
     setQrCode(null);
+    setLastAssistantAudio(null);
   }, []);
 
   const connect = useCallback(() => {
@@ -97,7 +100,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       });
     });
 
-    socket.on('assistant-response', (payload: { text?: string; payload?: unknown; command?: { speech?: string; action?: unknown } }) => {
+    socket.on('assistant-response', (payload: { utteranceId?: string; text?: string; payload?: unknown; command?: { speech?: string; action?: unknown } }) => {
       const text = payload?.text ?? payload?.command?.speech;
       const nextPayload = payload?.payload ?? payload?.command?.action;
       if (!text) return;
@@ -107,7 +110,13 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
         type: 'assistant-response',
         text,
         payload: nextPayload,
+        utteranceId: payload?.utteranceId,
       });
+    });
+
+    socket.on('assistant-audio', (payload: { utteranceId: string; mime: string; audioBase64: string }) => {
+      if (!payload?.utteranceId || !payload?.audioBase64) return;
+      setLastAssistantAudio(payload);
     });
 
     socket.on('command-result', (payload: { message?: string; success?: boolean; data?: unknown }) => {
@@ -182,7 +191,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       });
     });
 
-    socket.on('assistant-response', (payload: { text?: string; payload?: unknown; command?: { speech?: string; action?: unknown } }) => {
+    socket.on('assistant-response', (payload: { utteranceId?: string; text?: string; payload?: unknown; command?: { speech?: string; action?: unknown } }) => {
       const text = payload?.text ?? payload?.command?.speech;
       const nextPayload = payload?.payload ?? payload?.command?.action;
       if (!text) return;
@@ -192,7 +201,13 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
         type: 'assistant-response',
         text,
         payload: nextPayload,
+        utteranceId: payload?.utteranceId,
       });
+    });
+
+    socket.on('assistant-audio', (payload: { utteranceId: string; mime: string; audioBase64: string }) => {
+      if (!payload?.utteranceId || !payload?.audioBase64) return;
+      setLastAssistantAudio(payload);
     });
 
     socket.on('command-result', (payload: { message?: string; success?: boolean; data?: unknown }) => {
@@ -251,6 +266,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       sessionId,
       lastError,
       lastEvent,
+      lastAssistantAudio,
       qrCode,
       setServerUrl,
       connect,
@@ -258,7 +274,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       disconnect,
       sendCommand,
     }),
-    [connected, connecting, serverUrl, sessionId, lastError, lastEvent, qrCode, connect, joinSession, disconnect, sendCommand]
+    [connected, connecting, serverUrl, sessionId, lastError, lastEvent, lastAssistantAudio, qrCode, connect, joinSession, disconnect, sendCommand]
   );
 
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;

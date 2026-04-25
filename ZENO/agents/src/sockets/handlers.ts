@@ -11,6 +11,8 @@ import { generateQrDataUrl } from "../qr/qr";
 import { getLocalIpv4 } from "../net/localIp";
 import { generateCommandFromText } from "../ai/gemini";
 import { executeAction } from "../executor/executor";
+import { synthesizeElevenLabs } from "../tts/elevenlabs";
+import crypto from "node:crypto";
 
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -23,6 +25,10 @@ export type SocketHandlersDeps = {
   serverUrlOverride: string | undefined;
   geminiApiKey: string | undefined;
   geminiModel: string;
+  elevenLabsApiKey: string | undefined;
+  elevenLabsVoiceId: string | undefined;
+  elevenLabsVoiceName: string;
+  elevenLabsModelId: string;
 };
 
 function emitError(socket: TypedSocket, error: ServerError): void {
@@ -67,6 +73,41 @@ export function registerSocketHandlers(deps: SocketHandlersDeps): void {
     socket.join(sessionId);
 
     io.to(sessionId).emit("session-joined", { sessionId, role: "client" });
+
+    // Greeting to the joining client (best-effort TTS).
+    void (async () => {
+      const utteranceId = crypto.randomUUID();
+      const greeting = "Hello sir, want me to open your favorite song?";
+      const command = {
+        speech: greeting,
+        action: { type: "assistant_message", text: greeting } as const,
+      };
+
+      socket.emit("assistant-response", { sessionId, utteranceId, command });
+
+      try {
+        const audio = await synthesizeElevenLabs(greeting, {
+          port,
+          serverUrlOverride,
+          geminiApiKey,
+          geminiModel,
+          elevenLabsApiKey: deps.elevenLabsApiKey,
+          elevenLabsVoiceId: deps.elevenLabsVoiceId,
+          elevenLabsVoiceName: deps.elevenLabsVoiceName,
+          elevenLabsModelId: deps.elevenLabsModelId,
+        });
+        if (audio) {
+          socket.emit("assistant-audio", {
+            sessionId,
+            utteranceId,
+            mime: audio.mime,
+            audioBase64: audio.base64,
+          });
+        }
+      } catch {
+        // ignore
+      }
+    })();
   });
 
   socket.on("user-command", async (payload) => {
@@ -82,7 +123,32 @@ export function registerSocketHandlers(deps: SocketHandlersDeps): void {
 
     try {
       const command = await generateCommandFromText(text, { geminiApiKey, geminiModel });
-      io.to(sessionId).emit("assistant-response", { sessionId, command });
+      const utteranceId = crypto.randomUUID();
+      io.to(sessionId).emit("assistant-response", { sessionId, utteranceId, command });
+
+      // Optional TTS (ElevenLabs) — best-effort.
+      try {
+        const audio = await synthesizeElevenLabs(command.speech, {
+          port,
+          serverUrlOverride,
+          geminiApiKey,
+          geminiModel,
+          elevenLabsApiKey: deps.elevenLabsApiKey,
+          elevenLabsVoiceId: deps.elevenLabsVoiceId,
+          elevenLabsVoiceName: deps.elevenLabsVoiceName,
+          elevenLabsModelId: deps.elevenLabsModelId,
+        });
+        if (audio) {
+          io.to(sessionId).emit("assistant-audio", {
+            sessionId,
+            utteranceId,
+            mime: audio.mime,
+            audioBase64: audio.base64,
+          });
+        }
+      } catch {
+        // ignore
+      }
 
       io.to(sessionId).emit("execute-command", { sessionId, action: command.action });
       const result = await executeAction(command.action);
