@@ -6,6 +6,10 @@ export type Env = {
   serverUrlOverride: string | undefined;
   geminiApiKey: string | undefined;
   geminiModel: string;
+  elevenLabsApiKey: string | undefined;
+  elevenLabsVoiceId: string | undefined;
+  elevenLabsVoiceName: string;
+  elevenLabsModelId: string;
 };
 
 export function loadEnv(): Env {
@@ -22,5 +26,19 @@ export function loadEnv(): Env {
     process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim() || undefined;
   const geminiModel = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 
-  return { port, serverUrlOverride, geminiApiKey, geminiModel };
+  const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY?.trim() || undefined;
+  const elevenLabsVoiceId = process.env.ELEVENLABS_VOICE_ID?.trim() || undefined;
+  const elevenLabsVoiceName = process.env.ELEVENLABS_VOICE_NAME?.trim() || "Chris";
+  const elevenLabsModelId = process.env.ELEVENLABS_MODEL_ID?.trim() || "eleven_multilingual_v2";
+
+  return {
+    port,
+    serverUrlOverride,
+    geminiApiKey,
+    geminiModel,
+    elevenLabsApiKey,
+    elevenLabsVoiceId,
+    elevenLabsVoiceName,
+    elevenLabsModelId,
+  };
 }

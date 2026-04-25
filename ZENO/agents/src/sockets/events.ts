@@ -14,7 +14,15 @@ export type SessionJoined = {
 
 export type AssistantResponse = {
   sessionId: string;
+  utteranceId: string;
   command: AiCommand;
+};
+
+export type AssistantAudio = {
+  sessionId: string;
+  utteranceId: string;
+  mime: "audio/mpeg";
+  audioBase64: string;
 };
 
 export type ExecuteCommand = {
@@ -49,6 +57,7 @@ export type ServerToClientEvents = {
   "session-created": (payload: CreateSessionResponse) => void;
   "session-joined": (payload: SessionJoined) => void;
   "assistant-response": (payload: AssistantResponse) => void;
+  "assistant-audio": (payload: AssistantAudio) => void;
   "execute-command": (payload: ExecuteCommand) => void;
   "command-result": (payload: CommandResult) => void;
   error: (payload: ServerError) => void;
