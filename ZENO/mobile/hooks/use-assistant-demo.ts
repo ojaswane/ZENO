@@ -18,7 +18,7 @@ function createId(prefix: string) {
 }
 
 export function useAssistantDemo() {
-  const { connected, lastAssistantAudio, lastEvent, sendCommand } = useConnection();
+  const { connected, lastAssistantAudio, lastEvent, sendCommand, pendingConfirm, confirmPendingAction } = useConnection();
   const {
     isListening,
     transcript,
@@ -163,5 +163,7 @@ export function useAssistantDemo() {
     transcript,
     startListening,
     stopListening,
+    pendingConfirm,
+    confirmPendingAction,
   };
 }

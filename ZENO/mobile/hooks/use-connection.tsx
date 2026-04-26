@@ -28,11 +28,13 @@ type ConnectionContextValue = {
   lastEvent: ConnectionEvent | null;
   lastAssistantAudio: { utteranceId: string; mime: string; audioBase64: string } | null;
   qrCode: string | null;
+  pendingConfirm: { contactName: string; message: string } | null;
   setServerUrl: (serverUrl: string) => void;
   connect: () => void;
   joinSession: (sessionId: string, serverUrl?: string) => void;
   disconnect: () => void;
   sendCommand: (text: string) => boolean;
+  confirmPendingAction: (confirmed: boolean) => void;
 };
 
 const ConnectionContext = React.createContext<ConnectionContextValue | null>(null);
@@ -48,6 +50,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{ contactName: string; message: string } | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastEvent, setLastEvent] = useState<ConnectionEvent | null>(null);
   const [lastAssistantAudio, setLastAssistantAudio] = useState<ConnectionContextValue['lastAssistantAudio']>(null);
@@ -119,7 +122,16 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       setLastAssistantAudio(payload);
     });
 
-    socket.on('command-result', (payload: { message?: string; success?: boolean; data?: unknown }) => {
+    socket.on('execute-command', (payload: { sessionId: string; status?: string; action?: { type?: string; contact_name?: string; message?: string } }) => {
+      if (payload?.status === 'pending' && payload?.action?.type === 'send_whatsapp_message') {
+        setPendingConfirm({
+          contactName: payload.action.contact_name ?? 'Unknown',
+          message: payload.action.message ?? '',
+        });
+      }
+    });
+
+    socket.on('command-result', (payload: { message?: string; success?: boolean; data?: unknown; requiresConfirmation?: boolean; confirmPrompt?: string }) => {
       setLastEvent({
         id: createEventId('command-result'),
         type: 'command-result',
@@ -210,7 +222,16 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       setLastAssistantAudio(payload);
     });
 
-    socket.on('command-result', (payload: { message?: string; success?: boolean; data?: unknown }) => {
+    socket.on('execute-command', (payload: { sessionId: string; status?: string; action?: { type?: string; contact_name?: string; message?: string } }) => {
+      if (payload?.status === 'pending' && payload?.action?.type === 'send_whatsapp_message') {
+        setPendingConfirm({
+          contactName: payload.action.contact_name ?? 'Unknown',
+          message: payload.action.message ?? '',
+        });
+      }
+    });
+
+    socket.on('command-result', (payload: { message?: string; success?: boolean; data?: unknown; requiresConfirmation?: boolean; confirmPrompt?: string }) => {
       setLastEvent({
         id: createEventId('command-result'),
         type: 'command-result',
@@ -252,6 +273,12 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
     return true;
   }, [sessionId]);
 
+  const confirmPendingAction = useCallback((confirmed: boolean) => {
+    if (!socketRef.current || !sessionId) return;
+    setPendingConfirm(null);
+    socketRef.current.emit('confirm-action', { sessionId, confirmed });
+  }, [sessionId]);
+
   useEffect(() => {
     return () => {
       socketRef.current?.disconnect();
@@ -268,13 +295,15 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       lastEvent,
       lastAssistantAudio,
       qrCode,
+      pendingConfirm,
       setServerUrl,
       connect,
       joinSession,
       disconnect,
       sendCommand,
+      confirmPendingAction,
     }),
-    [connected, connecting, serverUrl, sessionId, lastError, lastEvent, lastAssistantAudio, qrCode, connect, joinSession, disconnect, sendCommand]
+    [connected, connecting, serverUrl, sessionId, lastError, lastEvent, lastAssistantAudio, qrCode, pendingConfirm, connect, joinSession, disconnect, sendCommand, confirmPendingAction]
   );
 
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;

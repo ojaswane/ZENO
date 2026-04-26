@@ -21,5 +21,35 @@ export type SearchWebAction = {
   query: string;
 };
 
-export type Action = AssistantMessageAction | OpenAppAction | OpenWithQueryAction | SearchWebAction;
+export type SystemControlAction = {
+  type: "system_control";
+  action: "sleep" | "lock" | "shutdown" | "restart";
+};
+
+export type ListBluetoothAction = {
+  type: "list_bluetooth";
+};
+
+export type BluetoothConnectAction = {
+  type: "bluetooth_connect";
+  device_name: string;
+  connect: boolean;
+};
+
+export type SendWhatsAppMessageAction = {
+  type: "send_whatsapp_message";
+  contact_name: string;
+  message: string;
+  confirm: boolean;
+};
+
+export type Action =
+  | AssistantMessageAction
+  | OpenAppAction
+  | OpenWithQueryAction
+  | SearchWebAction
+  | SystemControlAction
+  | ListBluetoothAction
+  | BluetoothConnectAction
+  | SendWhatsAppMessageAction;
 

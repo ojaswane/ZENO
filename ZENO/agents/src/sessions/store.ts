@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { Action } from "../types/actions";
 
 export type SessionId = string;
 
@@ -8,6 +9,7 @@ export type Session = {
   clientSocketId?: string;
   createdAtMs: number;
   lastActivityAtMs: number;
+  pendingAction?: Action;
 };
 
 export type SessionStore = {
@@ -15,6 +17,9 @@ export type SessionStore = {
   get(id: SessionId): Session | undefined;
   joinClient(id: SessionId, clientSocketId: string): Session | undefined;
   touch(id: SessionId): void;
+  setPendingAction(id: SessionId, action: Action): void;
+  getPendingAction(id: SessionId): Action | undefined;
+  clearPendingAction(id: SessionId): void;
   delete(id: SessionId): void;
   deleteByHostSocket(hostSocketId: string): void;
   deleteByClientSocket(clientSocketId: string): void;
@@ -63,6 +68,22 @@ export function createSessionStore(options: SessionStoreOptions): SessionStore {
       const existing = sessions.get(id);
       if (!existing) return;
       sessions.set(id, { ...existing, lastActivityAtMs: Date.now() });
+    },
+
+    setPendingAction(id, action) {
+      const existing = sessions.get(id);
+      if (!existing) return;
+      sessions.set(id, { ...existing, pendingAction: action, lastActivityAtMs: Date.now() });
+    },
+
+    getPendingAction(id) {
+      return sessions.get(id)?.pendingAction;
+    },
+
+    clearPendingAction(id) {
+      const existing = sessions.get(id);
+      if (!existing) return;
+      sessions.set(id, { ...existing, pendingAction: undefined, lastActivityAtMs: Date.now() });
     },
 
     delete(id) {

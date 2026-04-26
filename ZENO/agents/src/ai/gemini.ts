@@ -21,7 +21,7 @@ RESPONSE FORMAT (ALWAYS JSON):
 {
   "speech": string,
   "action": {
-    "type": "open_app" | "search_web" | "open_with_query" | "assistant_message",
+    "type": "open_app" | "search_web" | "open_with_query" | "system_control" | "list_bluetooth" | "bluetooth_connect" | "send_whatsapp_message" | "assistant_message",
     ...fields
   }
 }
@@ -32,7 +32,11 @@ RULES:
 
 - ALWAYS include "speech" (this is what user hears)
 - Use "assistant_message" when just chatting
-- Use "open_app" or "search_web" when action is needed
+- Use "system_control" for sleep/lock/shutdown/restart
+- Use "list_bluetooth" to show paired Bluetooth devices
+- Use "bluetooth_connect" to connect/disconnect a Bluetooth device
+- Use "send_whatsapp_message" for WhatsApp messages (requires confirm: false - user must verify first)
+- Use "open_app" or "search_web" or "open_with_query" for app/web actions
 - NEVER return raw text outside JSON
 
 ---
@@ -98,6 +102,58 @@ User: "search latest news on chrome"
     "type": "open_with_query",
     "app_name": "chrome",
     "query": "latest news"
+  }
+}
+
+User: "put the system to sleep"
+
+{
+  "speech": "Putting the system to sleep, sir.",
+  "action": {
+    "type": "system_control",
+    "action": "sleep"
+  }
+}
+
+User: "lock the system"
+
+{
+  "speech": "Locking the system, sir.",
+  "action": {
+    "type": "system_control",
+    "action": "lock"
+  }
+}
+
+User: "show available bluetooth devices"
+
+{
+  "speech": "Listing paired Bluetooth devices, sir.",
+  "action": {
+    "type": "list_bluetooth"
+  }
+}
+
+User: "disconnect my bluetooth speaker"
+
+{
+  "speech": "Disconnecting your Bluetooth speaker, sir.",
+  "action": {
+    "type": "bluetooth_connect",
+    "device_name": "Speaker",
+    "connect": false
+  }
+}
+
+User: "message Thanvisha that hey my app is working"
+
+{
+  "speech": "I'll prepare that WhatsApp message for Thanvisha. Please confirm before sending.",
+  "action": {
+    "type": "send_whatsapp_message",
+    "contact_name": "Thanvisha",
+    "message": "hey my app is working",
+    "confirm": false
   }
 }
 `.trim();
@@ -186,6 +242,57 @@ function toSafeCommand(obj: unknown): AiCommand {
       };
     }
     return { speech, action: { type: "search_web", query } };
+  }
+
+  if (type === "system_control") {
+    const sysAction = (action as { action?: unknown }).action;
+    if (!["sleep", "lock", "shutdown", "restart"].includes(sysAction as string)) {
+      return {
+        speech: "Unknown system action.",
+        action: { type: "assistant_message", text: "Supported system actions: sleep, lock, shutdown, restart." },
+      };
+    }
+    return { speech, action: { type: "system_control", action: sysAction as "sleep" | "lock" | "shutdown" | "restart" } };
+  }
+
+  if (type === "list_bluetooth") {
+    return { speech, action: { type: "list_bluetooth" } };
+  }
+
+  if (type === "bluetooth_connect") {
+    const deviceName = (action as { device_name?: unknown }).device_name;
+    const connect = (action as { connect?: unknown }).connect;
+    if (!deviceName || typeof deviceName !== "string") {
+      return {
+        speech: "Which device should I connect to?",
+        action: { type: "assistant_message", text: "Missing device name." },
+      };
+    }
+    return {
+      speech,
+      action: { type: "bluetooth_connect", device_name: deviceName, connect: !!connect },
+    };
+  }
+
+  if (type === "send_whatsapp_message") {
+    const contactName = (action as { contact_name?: unknown }).contact_name;
+    const message = (action as { message?: unknown }).message;
+    if (!contactName || typeof contactName !== "string") {
+      return {
+        speech: "Which contact should I message?",
+        action: { type: "assistant_message", text: "Missing contact name." },
+      };
+    }
+    if (!message || typeof message !== "string") {
+      return {
+        speech: "What message should I send?",
+        action: { type: "assistant_message", text: "Missing message text." },
+      };
+    }
+    return {
+      speech,
+      action: { type: "send_whatsapp_message", contact_name: contactName, message, confirm: false },
+    };
   }
 
   return {

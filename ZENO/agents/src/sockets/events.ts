@@ -28,12 +28,15 @@ export type AssistantAudio = {
 export type ExecuteCommand = {
   sessionId: string;
   action: Action;
+  status?: "ready" | "pending";
 };
 
 export type CommandResult = {
   sessionId: string;
   success: boolean;
   message: string;
+  requiresConfirmation?: boolean;
+  confirmPrompt?: string;
 };
 
 export type ServerError = {
@@ -51,6 +54,7 @@ export type ClientToServerEvents = {
   "create-session": () => void;
   "join-session": (sessionId: string) => void;
   "user-command": (payload: { sessionId: string; text: string } | { sessionId: string; data: string }) => void;
+  "confirm-action": (payload: { sessionId: string; confirmed: boolean }) => void;
 };
 
 export type ServerToClientEvents = {

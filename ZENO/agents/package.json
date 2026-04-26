@@ -18,7 +18,8 @@
     "express": "^5.2.1",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "whatsapp-web.js": "^1.23.0"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",

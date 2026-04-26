@@ -150,13 +150,63 @@ export function registerSocketHandlers(deps: SocketHandlersDeps): void {
         // ignore
       }
 
-      io.to(sessionId).emit("execute-command", { sessionId, action: command.action });
+      // Execute the action (may return requiresConfirmation=true for WhatsApp)
       const result = await executeAction(command.action);
-      io.to(sessionId).emit("command-result", { sessionId, ...result });
+
+      if (result.requiresConfirmation) {
+        // Store pending action for later execution after user confirmation
+        sessions.setPendingAction(sessionId, command.action);
+        io.to(sessionId).emit("execute-command", {
+          sessionId,
+          action: command.action,
+          status: "pending",
+        });
+        io.to(sessionId).emit("command-result", {
+          sessionId,
+          ...result,
+        });
+      } else {
+        io.to(sessionId).emit("execute-command", { sessionId, action: command.action, status: "ready" });
+        io.to(sessionId).emit("command-result", { sessionId, ...result });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "AI processing failed";
       emitError(socket, { code: "AI_FAILED", message });
     }
+  });
+
+  socket.on("confirm-action", async (payload) => {
+    const { sessionId, confirmed } = payload;
+    const session = sessions.get(sessionId);
+    if (!session) {
+      emitError(socket, { code: "SESSION_NOT_FOUND", message: "Session not found" });
+      return;
+    }
+
+    const pendingAction = sessions.getPendingAction(sessionId);
+    if (!pendingAction) {
+      io.to(sessionId).emit("command-result", {
+        sessionId,
+        success: false,
+        message: "No pending action to confirm.",
+      });
+      return;
+    }
+
+    sessions.clearPendingAction(sessionId);
+
+    if (!confirmed) {
+      io.to(sessionId).emit("command-result", {
+        sessionId,
+        success: false,
+        message: "Action cancelled by user.",
+      });
+      return;
+    }
+
+    // Execute the confirmed action
+    const result = await executeAction(pendingAction);
+    io.to(sessionId).emit("command-result", { sessionId, ...result });
   });
 
   socket.on("disconnect", () => {

@@ -37,7 +37,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
 export default function AssistantScreen() {
   const { connected, connecting, sessionId } = useConnection();
-  const { orbState, headerLabel, messages, input, setInput, send, isListening, transcript, startListening, stopListening } =
+  const { orbState, headerLabel, messages, input, setInput, send, isListening, transcript, startListening, stopListening, pendingConfirm, confirmPendingAction } =
     useAssistantDemo();
 
   const statusText = useMemo(() => {
@@ -95,6 +95,30 @@ export default function AssistantScreen() {
             <Text style={styles.voicePreviewText}>
               {transcript || 'Speak now...'}
             </Text>
+          </View>
+        ) : null}
+
+        {pendingConfirm ? (
+          <View style={styles.confirmWrap}>
+            <GlassSurface variant="card" style={styles.confirmCard}>
+              <Text style={styles.confirmTitle}>Confirm Message</Text>
+              <Text style={styles.confirmContact}>To: {pendingConfirm.contactName}</Text>
+              <Text style={styles.confirmMessage}>"{pendingConfirm.message}"</Text>
+              <View style={styles.confirmButtons}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => confirmPendingAction(false)}
+                  style={({ pressed }) => [styles.confirmBtn, styles.confirmBtnCancel, pressed && { opacity: 0.8 }]}>
+                  <Text style={styles.confirmBtnCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => confirmPendingAction(true)}
+                  style={({ pressed }) => [styles.confirmBtn, styles.confirmBtnSend, pressed && { opacity: 0.8 }]}>
+                  <Text style={styles.confirmBtnSendText}>Send</Text>
+                </Pressable>
+              </View>
+            </GlassSurface>
           </View>
         ) : null}
 
@@ -261,6 +285,62 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 6,
     gap: 4,
+  },
+  confirmWrap: {
+    marginBottom: 12,
+    paddingHorizontal: 6,
+  },
+  confirmCard: {
+    padding: 16,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderColor: 'rgba(192,132,252,0.35)',
+  },
+  confirmTitle: {
+    color: 'rgba(192,132,252,0.95)',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  confirmContact: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  confirmMessage: {
+    color: 'rgba(255,255,255,0.95)',
+    fontSize: 15,
+    fontStyle: 'italic',
+    marginBottom: 14,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'flex-end',
+  },
+  confirmBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  confirmBtnCancel: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  confirmBtnSend: {
+    backgroundColor: 'rgba(34,197,94,0.2)',
+    borderColor: 'rgba(34,197,94,0.5)',
+  },
+  confirmBtnCancelText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  confirmBtnSendText: {
+    color: '#22C55E',
+    fontSize: 14,
+    fontWeight: '600',
   },
   voicePreviewLabel: {
     color: 'rgba(192,132,252,0.88)',
