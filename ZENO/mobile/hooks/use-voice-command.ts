@@ -11,15 +11,18 @@ type SpeechErrorEvent = {
 };
 
 type SpeechResultEvent = {
+  isFinal?: boolean;
   results?: Array<{ transcript?: string }>;
 };
 
 type SpeechModule = {
-  requestMicrophonePermissionsAsync: () => Promise<SpeechPermission>;
+  requestPermissionsAsync: () => Promise<SpeechPermission>;
+  requestMicrophonePermissionsAsync?: () => Promise<SpeechPermission>;
+  requestSpeechRecognizerPermissionsAsync?: () => Promise<SpeechPermission>;
   start: (options: Record<string, unknown>) => void;
   stop: () => void;
   abort: () => void;
-  addListener: (eventName: string, listener: (event?: any) => void) => SpeechSubscription;
+  addListener: (eventName: string, listener: (event?: unknown) => void) => SpeechSubscription;
   isRecognitionAvailable?: () => boolean;
   supportsOnDeviceRecognition?: () => boolean;
 };
@@ -58,19 +61,22 @@ export function useVoiceCommand() {
       speechApi.module.addListener('end', () => {
         setIsListening(false);
       }),
-      speechApi.module.addListener('result', (event?: SpeechResultEvent) => {
-        const nextTranscript = event?.results?.[0]?.transcript ?? '';
-        if (nextTranscript) {
-          setTranscript(nextTranscript);
-        }
+      speechApi.module.addListener('result', (event?: unknown) => {
+        const payload = event as SpeechResultEvent | undefined;
+        const nextTranscript = payload?.results?.[0]?.transcript ?? '';
+        if (!nextTranscript) return;
+
+        // Always keep the latest partial result; `useAssistantDemo` sends once listening stops.
+        setTranscript(nextTranscript);
       }),
-      speechApi.module.addListener('error', (event?: SpeechErrorEvent) => {
+      speechApi.module.addListener('error', (event?: unknown) => {
+        const payload = event as SpeechErrorEvent | undefined;
         setIsListening(false);
-        if (event?.error === 'no-speech') {
+        if (payload?.error === 'no-speech') {
           setSpeechError('I did not catch that. Try speaking a bit closer to the mic.');
           return;
         }
-        setSpeechError(event?.message || 'Speech recognition failed on this device.');
+        setSpeechError(payload?.message || 'Speech recognition failed on this device.');
       }),
     ];
 
@@ -92,15 +98,8 @@ export function useVoiceCommand() {
       return false;
     }
 
-    if (
-      speechApi.module.supportsOnDeviceRecognition &&
-      !speechApi.module.supportsOnDeviceRecognition()
-    ) {
-      setSpeechError('This device does not currently support on-device speech recognition.');
-      return false;
-    }
-
-    const permission = await speechApi.module.requestMicrophonePermissionsAsync();
+    // Request both mic + speech recognition permissions (iOS needs both).
+    const permission = await speechApi.module.requestPermissionsAsync();
     if (!permission.granted) {
       setSpeechError('Microphone permission is required for voice control.');
       return false;
@@ -111,7 +110,8 @@ export function useVoiceCommand() {
       interimResults: true,
       maxAlternatives: 1,
       continuous: false,
-      requiresOnDeviceRecognition: true,
+      // Avoid blocking voice input on devices without offline packs.
+      requiresOnDeviceRecognition: false,
       addsPunctuation: true,
     });
 

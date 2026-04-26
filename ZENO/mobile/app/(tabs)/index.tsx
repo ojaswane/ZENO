@@ -18,6 +18,7 @@ import type { ChatMessage } from '@/hooks/use-assistant-demo';
 import { useAssistantDemo } from '@/hooks/use-assistant-demo';
 import { useConnection } from '@/hooks/use-connection';
 import { Image } from 'expo-image';
+import { Waveform } from '@/components/waveform';
 
 // import {} from '../assets/gifs/speaking.gif'
 
@@ -89,6 +90,7 @@ export default function AssistantScreen() {
 
         {isListening ? (
           <View style={styles.voicePreviewWrap}>
+            <Waveform active />
             <Text style={styles.voicePreviewLabel}>Listening</Text>
             <Text style={styles.voicePreviewText}>
               {transcript || 'Speak now...'}

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as Speech from 'expo-speech';
 
 import { useConnection } from './use-connection';
 import { useVoiceCommand } from './use-voice-command';
@@ -31,7 +30,6 @@ export function useAssistantDemo() {
   const [orbState, setOrbState] = useState<AssistantOrbState>('idle');
   const pendingUtteranceIdRef = useRef<string | null>(null);
   const pendingTextRef = useRef<string>('');
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: createId('a'),
@@ -42,17 +40,8 @@ export function useAssistantDemo() {
   ]);
   const [input, setInput] = useState('');
 
-  const speakLocal = useCallback((text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    Speech.stop();
-    Speech.speak(trimmed, {
-      rate: 0.95,
-      pitch: 1.0,
-      onDone: () => setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev)),
-      onStopped: () => setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev)),
-      onError: () => setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev)),
-    });
+  const markDone = useCallback(() => {
+    setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev));
   }, []);
 
   const send = useCallback(
@@ -103,25 +92,16 @@ export function useAssistantDemo() {
     if (lastEvent.type === 'assistant-response') {
       setOrbState('speaking');
 
-      // Prefer ElevenLabs audio if it arrives (same utteranceId); fall back to local TTS after a short delay.
+      // Wait for ElevenLabs audio (same utteranceId).
       pendingUtteranceIdRef.current = lastEvent.utteranceId ?? null;
       pendingTextRef.current = lastEvent.text;
-
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = setTimeout(() => {
-        // Only speak if we still haven't received audio for this utterance.
-        if (pendingUtteranceIdRef.current === (lastEvent.utteranceId ?? null)) {
-          speakLocal(lastEvent.text);
-        }
-      }, 900);
     } else {
       setOrbState('idle');
     }
-  }, [lastEvent, speakLocal]);
+  }, [lastEvent]);
 
   useEffect(() => {
     if (isListening) {
-      Speech.stop();
       setOrbState('listening');
       return;
     }
@@ -150,18 +130,13 @@ export function useAssistantDemo() {
     const pendingId = pendingUtteranceIdRef.current;
     if (!pendingId || lastAssistantAudio.utteranceId !== pendingId) return;
 
-    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
-    fallbackTimerRef.current = null;
-
     setOrbState('speaking');
     void playMp3Base64(lastAssistantAudio.audioBase64, {
-      onDone: () => setOrbState((prev) => (prev === 'speaking' ? 'idle' : prev)),
+      onDone: markDone,
     }).then((r) => {
-      if (!r.ok) {
-        speakLocal(pendingTextRef.current);
-      }
+      if (!r.ok) markDone();
     });
-  }, [connected, lastAssistantAudio, speakLocal]);
+  }, [connected, lastAssistantAudio, markDone]);
 
   useEffect(() => {
     if (!isListening && transcript.trim()) {
