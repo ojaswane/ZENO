@@ -1,20 +1,28 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 
 type PlayResult = { ok: true } | { ok: false; error: string };
 
-let currentSound: Audio.Sound | null = null;
+type AudioPlayerType = ReturnType<typeof createAudioPlayer>;
+let currentPlayer: AudioPlayerType | null = null;
+let currentSubscription: { remove: () => void } | null = null;
 
 async function stopCurrent(): Promise<void> {
   try {
-    if (currentSound) {
-      await currentSound.stopAsync();
-      await currentSound.unloadAsync();
+    if (currentSubscription) {
+      currentSubscription.remove();
+      currentSubscription = null;
     }
   } catch {
     // ignore
-  } finally {
-    currentSound = null;
+  }
+  try {
+    if (currentPlayer) {
+      currentPlayer.remove();
+      currentPlayer = null;
+    }
+  } catch {
+    // ignore
   }
 }
 
@@ -28,28 +36,46 @@ export async function playMp3Base64(
   try {
     await stopCurrent();
 
-    const uri = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory ?? ''}zeno_tts_${Date.now()}.mp3`;
+    const cacheDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory ?? '';
+    const uri = `${cacheDir}zeno_tts_${Date.now()}.mp3`;
     await FileSystem.writeAsStringAsync(uri, trimmed, { encoding: FileSystem.EncodingType.Base64 });
 
-    const { sound } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true, volume: 1.0 },
-    );
+    // Use createAudioPlayer factory
+    const player = createAudioPlayer({ uri });
+    currentPlayer = player;
 
-    currentSound = sound;
+    // Set up callback using addListener
+    const subscription = player.addListener('playbackStatusUpdate', (status: any) => {
+      console.log('[TTS] Status update:', JSON.stringify({
+        isLoaded: status?.isLoaded,
+        playing: status?.playing,
+        currentTime: status?.currentTime,
+        duration: status?.duration,
+        didJustFinish: status?.didJustFinish,
+      }));
 
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) return;
+      if (!status?.isLoaded) return;
+
       if (status.didJustFinish) {
-        void stopCurrent();
+        console.log('[TTS] Playback finished');
+        subscription.remove();
+        currentSubscription = null;
+        player.remove();
+        currentPlayer = null;
         void FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => undefined);
         options?.onDone?.();
       }
     });
+    currentSubscription = subscription;
+
+    console.log('[TTS] Starting playback');
+    player.play();
+    console.log('[TTS] Play() called');
 
     return { ok: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown audio error';
+    console.log('[TTS] Error:', message);
     return { ok: false, error: message };
   }
 }
