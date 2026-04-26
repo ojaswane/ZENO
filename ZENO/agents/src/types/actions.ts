@@ -10,10 +10,16 @@ export type OpenAppAction = {
   app_name: AllowedApp;
 };
 
+export type OpenWithQueryAction = {
+  type: "open_with_query";
+  app_name: "spotify" | "youtube" | "chrome";
+  query: string;
+};
+
 export type SearchWebAction = {
   type: "search_web";
   query: string;
 };
 
-export type Action = AssistantMessageAction | OpenAppAction | SearchWebAction;
+export type Action = AssistantMessageAction | OpenAppAction | OpenWithQueryAction | SearchWebAction;
 

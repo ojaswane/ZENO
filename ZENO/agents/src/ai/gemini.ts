@@ -21,7 +21,7 @@ RESPONSE FORMAT (ALWAYS JSON):
 {
   "speech": string,
   "action": {
-    "type": "open_app" | "search_web" | "assistant_message",
+    "type": "open_app" | "search_web" | "open_with_query" | "assistant_message",
     ...fields
   }
 }
@@ -65,6 +65,39 @@ User: "open chrome"
   "action": {
     "type": "open_app",
     "app_name": "chrome"
+  }
+}
+
+User: "play despacito on spotify"
+
+{
+  "speech": "Playing Despacito on Spotify, sir.",
+  "action": {
+    "type": "open_with_query",
+    "app_name": "spotify",
+    "query": "despacito"
+  }
+}
+
+User: "search for react hooks on youtube"
+
+{
+  "speech": "Searching for React Hooks on YouTube, sir.",
+  "action": {
+    "type": "open_with_query",
+    "app_name": "youtube",
+    "query": "react hooks"
+  }
+}
+
+User: "search latest news on chrome"
+
+{
+  "speech": "Searching latest news on Chrome, sir.",
+  "action": {
+    "type": "open_with_query",
+    "app_name": "chrome",
+    "query": "latest news"
   }
 }
 `.trim();
@@ -119,6 +152,29 @@ function toSafeCommand(obj: unknown): AiCommand {
       };
     }
     return { speech, action: { type: "open_app", app_name: appLower } };
+  }
+
+  if (type === "open_with_query") {
+    const appName = (action as { app_name?: unknown }).app_name;
+    const query = (action as { query?: unknown }).query;
+    const appLower = typeof appName === "string" ? appName.toLowerCase() : "";
+    const queryStr = typeof query === "string" ? query.trim() : "";
+    if (!appLower || !["spotify", "youtube", "chrome"].includes(appLower)) {
+      return {
+        speech: "That app isn't supported for search.",
+        action: {
+          type: "assistant_message",
+          text: "Supported apps for query search: spotify, youtube, chrome.",
+        },
+      };
+    }
+    if (!queryStr) {
+      return {
+        speech: `What do you want to search on ${appName}?`,
+        action: { type: "assistant_message", text: "Missing search query." },
+      };
+    }
+    return { speech, action: { type: "open_with_query", app_name: appLower as "spotify" | "youtube" | "chrome", query: queryStr } };
   }
 
   if (type === "search_web") {

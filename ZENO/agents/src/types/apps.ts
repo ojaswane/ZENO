@@ -1,4 +1,4 @@
-export const allowedApps = ["chrome", "vscode", "spotify"] as const;
+export const allowedApps = ["chrome", "vscode", "spotify", "youtube"] as const;
 
 export type AllowedApp = (typeof allowedApps)[number];
 
